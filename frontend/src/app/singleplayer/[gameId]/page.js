@@ -45,7 +45,7 @@ export default function Game({ params }) {
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(10);
   const [gameStatus, setGameStatus] = useState('waiting');
 
   useEffect(() => {
@@ -85,7 +85,6 @@ export default function Game({ params }) {
     } catch (error) {
       console.error('Error ending game:', error);
     }
-    router.push('/');
   };
 
   const handleAnswerChange = (e) => {
@@ -105,27 +104,28 @@ export default function Game({ params }) {
   const currentProblem = problems[currentProblemIndex];
 
   return (
-    <div className="text-center p-8">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold">Score: {score}</h2>
+    <div className="min-h-screen">
+      <div className="flex justify-between px-8 pt-4">
         <p className="text-xl">Time Left: {timeLeft}s</p>
+        <h2 className="text-2xl">Score: {score}</h2>
       </div>
 
-      {currentProblem && gameStatus === 'playing' && (
-        <div className="max-w-md mx-auto">
-          <div className="text-4xl mb-8">
-            {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber}
+      <div className="w-full bg-gray-300 py-4 mt-8">
+    {currentProblem && gameStatus === 'playing' && (
+          <div className="flex items-center justify-center space-x-4">
+            <div className="text-4xl">
+              {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber} = 
+            </div>
+            
+            <input
+              value={answer}
+              onChange={handleAnswerChange}
+              className="w-32 p-2 border rounded text-4xl"
+              autoFocus
+            />
           </div>
-          
-          <input
-            type="number"
-            value={answer}
-            onChange={handleAnswerChange}
-            className="w-full p-2 border rounded mb-4"
-            autoFocus
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

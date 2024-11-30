@@ -2,9 +2,18 @@
 
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const router = useRouter();
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const startSinglePlayer = () => {
     const gameId = uuidv4();
@@ -12,30 +21,37 @@ export default function Home() {
   };
 
   return (
-    <main className="text-center">
-      <h1 className="text-4xl font-bold mb-8">Arithmetic Practice</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto mb-12">
-        <button onClick={startSinglePlayer} className="game-button">
-          Single Player
-        </button>
-        <button onClick={() => router.push('/multiplayer')} className="game-button">
-          Multiplayer
-        </button>
-      </div>
+    <main className="min-h-screen bg-white">
+      <div className="bg-gray-300 p-8 w-full max-w-md mx-auto">
+        <h1 className="text-3xl font-bold mb-8">
+          Welcome to zetamaxx{username ? `, ${username}` : ''}
+        </h1>
+        
+        <div className="flex flex-row space-x-4">
+          <button 
+            onClick={() => router.push('/login')} 
+            
+          >
+            Login/Register
+          </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
-        <div className="game-option">
-          <h3 className="font-bold mb-2">30 Seconds</h3>
-          <p>Quick Practice</p>
-        </div>
-        <div className="game-option">
-          <h3 className="font-bold mb-2">60 Seconds</h3>
-          <p>Standard Game</p>
-        </div>
-        <div className="game-option">
-          <h3 className="font-bold mb-2">120 Seconds</h3>
-          <p>Extended Play</p>
+          <button 
+            onClick={startSinglePlayer} 
+          >
+            Singleplayer
+          </button>
+
+          <button 
+            onClick={() => router.push('/multiplayer')} 
+          >
+            Multiplayer
+          </button>
+
+          <button 
+            onClick={() => router.push('/profile')} 
+          >
+            Profile
+          </button>
         </div>
       </div>
     </main>

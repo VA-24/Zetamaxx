@@ -38,6 +38,7 @@ export default function Login() {
       }
 
       localStorage.setItem('token', data.token);
+      localStorage.setItem('username', formData.username);
       router.push('/');
     } catch (err) {
       setError(err.message);
@@ -55,7 +56,7 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} class="space-y-4">
+        <form onSubmit={handleSubmit} class="space-y-4 mb-4">
           <div>
             <label htmlFor="username" class="block text-sm font-medium mb-1">
               Username
@@ -88,14 +89,13 @@ export default function Login() {
 
           <button
             type="submit"
-            class="w-full bg-[#4a90e2] text-white py-2 px-4 rounded hover:bg-[#357abd] transition-colors"
           >
             Login
           </button>
         </form>
 
-          <Link href="/register" class="text-[#4a90e2] hover:underline">
-            Create an account here
+          <Link href="/register">
+            Create an account instead
           </Link>
 
       </div>

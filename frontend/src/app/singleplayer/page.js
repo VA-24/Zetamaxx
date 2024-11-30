@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default function SinglePlayer() {
   const router = useRouter();
-  const [duration, setDuration] = useState(60);
+  const [duration, setDuration] = useState(120);
 
   const startGame = async () => {
     const gameId = uuidv4();
