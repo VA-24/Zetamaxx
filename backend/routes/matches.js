@@ -76,7 +76,31 @@ router.get('/history', auth, async (req, res) => {
       res.status(500).send('Server error');
     }
   });
+
+  //for singleplayer
+  router.post('/complete', auth, async (req, res) => {
+    try {
+      const { score, timestamp } = req.body;
+      const user = await User.findById(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'user not found' });
+      }
+
+      user.singleplayerResults.push({
+        score: score,
+        timestamp: new Date(timestamp),
+      });
   
+      await user.save();
+      await user.updateAverageScore(score);
+  
+      res.json({ message: 'match completed' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('server error');
+    }
+  });
 
 router.post('/:matchId/complete', auth, async (req, res) => {
   try {
@@ -85,6 +109,7 @@ router.post('/:matchId/complete', auth, async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
 
+    
     const isDraw = match.challengerScore === match.challengedScore;
     let winnerId, loserId;
     

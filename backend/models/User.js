@@ -29,6 +29,16 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  singleplayerResults: [{
+    score: Number,
+    timestamp: Date,
+  }],
+  multiplayerResults: [{
+    score: Number,
+    timestamp: Date,
+    opponent: String,
+    rating: Number
+  }],
   createdAt: {
     type: Date,
     default: Date.now

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 function generateProblem() {
@@ -9,23 +9,29 @@ function generateProblem() {
 
   switch(operator) {
     case '+':
-      firstNumber = Math.floor(Math.random() * 100);
-      secondNumber = Math.floor(Math.random() * 100);
+      firstNumber = Math.floor(Math.random() * 99) + 2;
+      secondNumber = Math.floor(Math.random() * 99) + 2;
+      if (secondNumber > firstNumber) {
+        [firstNumber, secondNumber] = [secondNumber, firstNumber];
+      }
       correctAnswer = firstNumber + secondNumber;
       break;
     case '–':
-      firstNumber = Math.floor(Math.random() * 100);
-      secondNumber = Math.floor(Math.random() * firstNumber);
+      firstNumber = Math.floor(Math.random() * 199) + 2;
+      secondNumber = Math.floor(Math.random() * (firstNumber - 1)) + 1;
       correctAnswer = firstNumber - secondNumber;
       break;
     case '×':
-      firstNumber = Math.floor(Math.random() * 12);
-      secondNumber = Math.floor(Math.random() * 12);
+      firstNumber = Math.floor(Math.random() * 11) + 2;
+      secondNumber = Math.floor(Math.random() * 99) + 2;
+      if (secondNumber > firstNumber) {
+        [firstNumber, secondNumber] = [secondNumber, firstNumber];
+      }
       correctAnswer = firstNumber * secondNumber;
       break;
     case '÷':
-      secondNumber = Math.floor(Math.random() * 11) + 1;
-      correctAnswer = Math.floor(Math.random() * 12);
+      secondNumber = Math.floor(Math.random() * 11) + 2;
+      correctAnswer = Math.floor(Math.random() * 84) + 2;
       firstNumber = correctAnswer * secondNumber;
       break;
   }
@@ -40,13 +46,14 @@ function generateProblem() {
 
 export default function Game({ params }) {
   const router = useRouter();
-  const { gameId } = params;
   const [problems, setProblems] = useState([]);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState('waiting');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const endGameRef = useRef(false);
 
   useEffect(() => {
     const initialProblems = Array(200).fill(null).map(() => generateProblem());
@@ -55,8 +62,9 @@ export default function Game({ params }) {
     
     const timer = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) {
+        if (prev <= 1 && !endGameRef.current) {
           clearInterval(timer);
+          endGameRef.current = true;
           endGame();
           return 0;
         }
@@ -64,26 +72,51 @@ export default function Game({ params }) {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   const endGame = async () => {
+    if (isSubmitting || gameStatus === 'completed') return;
+    
+    setIsSubmitting(true);
     setGameStatus('completed');
+
+    const finalScore = await new Promise(resolve => {
+      setScore(currentScore => {
+        resolve(currentScore);
+        return currentScore;
+      });
+    });
+
+
+
+    const endTime = new Date().toISOString();
+
     try {
-      await fetch('/api/matches/complete', {
+      const response = await fetch('/api/matches/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-auth-token': localStorage.getItem('token')
         },
         body: JSON.stringify({
-          matchId: gameId,
-          score,
-          problemsSolved: currentProblemIndex
+          score: finalScore,
+          timestamp: endTime
         })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit score');
+      }
+
+      const data = await response.json();
+      console.log('Score submitted:', data);
     } catch (error) {
       console.error('Error ending game:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -106,11 +139,11 @@ export default function Game({ params }) {
   return (
     <div className="min-h-screen">
       <div className="flex justify-between px-8 pt-4">
-        <p className="text-xl">Time Left: {timeLeft}s</p>
-        <h2 className="text-2xl">Score: {score}</h2>
+        <p className="text-xl">Seconds left: {timeLeft}</p>
+        <h2 className="text-xl">Score: {score}</h2>
       </div>
 
-      <div className="w-full bg-gray-300 py-4 mt-8">
+      <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
     {currentProblem && gameStatus === 'playing' && (
           <div className="flex items-center justify-center space-x-4">
             <div className="text-4xl">
@@ -123,6 +156,18 @@ export default function Game({ params }) {
               className="w-32 p-2 border rounded text-4xl"
               autoFocus
             />
+          </div>
+        )}
+
+    {gameStatus === 'completed' && (
+          <div className="text-center">
+            <h2 className="text-4xl mb-2">Score: {score}</h2>
+            <p 
+              className="text-blue-800 underline cursor-pointer text-sm"
+              onClick={() => router.push('/singleplayer')}
+            >
+              Try again?
+            </p>
           </div>
         )}
       </div>
