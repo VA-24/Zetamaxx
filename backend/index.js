@@ -14,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/matches', require('./routes/matches'));
 
 app.get('/api/', (req, res) => {
   res.json({ message: 'server operations nominal' });

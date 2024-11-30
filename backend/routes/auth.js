@@ -49,9 +49,9 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username });
     if (!user) {
       return res.status(400).json({ message: 'invalid credentials' });
     }
@@ -78,6 +78,16 @@ router.post('/login', async (req, res) => {
     );
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const leaderboard = await User.getLeaderboard(10);
+    res.json(leaderboard);
+  } catch (err) {
+    console.error(err);
     res.status(500).send('Server error');
   }
 });

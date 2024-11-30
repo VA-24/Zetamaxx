@@ -130,25 +130,6 @@ router.post('/:matchId/answer', auth, async (req, res) => {
   }
 });
 
-router.get('/:matchId', auth, async (req, res) => {
-  try {
-    const match = await Match.findById(req.params.matchId)
-      .populate('challenger challenged', 'username');
-    
-    if (!match) {
-      return res.status(404).json({ message: 'match not found' });
-    }
-
-    if (match.status === 'in_progress' && new Date() > match.endTime) {
-      match.status = 'completed';
-      await match.save();
-    }
-
-    res.json(match);
-  } catch (err) {
-    res.status(500).send('server error');
-  }
-});
 
 
 router.get('/history', auth, async (req, res) => {
@@ -159,11 +140,10 @@ router.get('/history', auth, async (req, res) => {
           { challenged: req.user.id }
         ]
       })
-      .populate('challenger challenged', 'username') // Get usernames of both players
-      .sort({ createdAt: -1 }) // Most recent first
-      .limit(20); // Limit to last 20 matches
+      .populate('challenger challenged', 'username')
+      .sort({ createdAt: -1 })
+      .limit(20);
   
-      // Format the matches for frontend display
       const formattedMatches = matches.map(match => {
         const isChallenger = match.challenger._id.toString() === req.user.id;
         return {
@@ -189,45 +169,6 @@ router.get('/history', auth, async (req, res) => {
     }
   });
   
-
-  router.get('/history/:matchId', auth, async (req, res) => {
-    try {
-      const match = await Match.findById(req.params.matchId)
-        .populate('challenger challenged', 'username');
-  
-      if (!match) {
-        return res.status(404).json({ message: 'match not found' });
-      }
-  
-
-      if (match.challenger._id.toString() !== req.user.id && 
-          match.challenged._id.toString() !== req.user.id) {
-        return res.status(403).json({ message: 'not authorized to view this match' });
-      }
-  
-      const isChallenger = match.challenger._id.toString() === req.user.id;
-      const matchDetails = {
-        id: match._id,
-        opponent: isChallenger ? match.challenged.username : match.challenger.username,
-        userScore: isChallenger ? match.challengerScore : match.challengedScore,
-        opponentScore: isChallenger ? match.challengedScore : match.challengerScore,
-        status: match.status,
-        duration: match.duration,
-        date: match.createdAt,
-        // problems: isChallenger ? match.challengerProblems : match.challengedProblems,
-        won: match.status === 'completed' ? 
-          (isChallenger ? 
-            match.challengerScore > match.challengedScore : 
-            match.challengedScore > match.challengerScore) 
-          : null
-      };
-  
-      res.json(matchDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('Server error');
-    }
-  });
 
 router.post('/:matchId/complete', auth, async (req, res) => {
   try {
@@ -265,14 +206,5 @@ router.post('/:matchId/complete', auth, async (req, res) => {
   }
 });
 
-router.get('/leaderboard', async (req, res) => {
-  try {
-    const leaderboard = await User.getLeaderboard(10);
-    res.json(leaderboard);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
-  }
-});
 
 module.exports = router;
