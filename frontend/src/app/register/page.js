@@ -9,7 +9,6 @@ export default function Register() {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
   });
   const [error, setError] = useState('');
 
@@ -24,22 +23,21 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    const requestBody = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
     }
 
+    console.log(requestBody);
+
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('http://localhost:3001/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -112,21 +110,6 @@ export default function Register() {
             />
           </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-
           <button
             type="submit"
             className="w-full bg-[#4a90e2] text-white py-2 px-4 rounded hover:bg-[#357abd] transition-colors"
@@ -136,7 +119,7 @@ export default function Register() {
         </form>
 
           <Link href="/login" className="text-[#4a90e2] hover:underline">
-            Login
+            Login instead
           </Link>
       </div>
     </main>

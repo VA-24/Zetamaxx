@@ -2,74 +2,107 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function Game({ gameId, mode }) {
+function generateProblem() {
+  const operators = ['+', '–', '×', '÷'];
+  const operator = operators[Math.floor(Math.random() * operators.length)];
+  let firstNumber, secondNumber, correctAnswer;
+
+  switch(operator) {
+    case '+':
+      firstNumber = Math.floor(Math.random() * 100);
+      secondNumber = Math.floor(Math.random() * 100);
+      correctAnswer = firstNumber + secondNumber;
+      break;
+    case '–':
+      firstNumber = Math.floor(Math.random() * 100);
+      secondNumber = Math.floor(Math.random() * firstNumber);
+      correctAnswer = firstNumber - secondNumber;
+      break;
+    case '×':
+      firstNumber = Math.floor(Math.random() * 12);
+      secondNumber = Math.floor(Math.random() * 12);
+      correctAnswer = firstNumber * secondNumber;
+      break;
+    case '÷':
+      secondNumber = Math.floor(Math.random() * 11) + 1;
+      correctAnswer = Math.floor(Math.random() * 12);
+      firstNumber = correctAnswer * secondNumber;
+      break;
+  }
+
+  return {
+    firstNumber,
+    secondNumber,
+    operator,
+    correctAnswer
+  };
+}
+
+export default function Game({ params }) {
   const router = useRouter();
-  const [problem, setProblem] = useState(null);
+  const { gameId } = params;
+  const [problems, setProblems] = useState([]);
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState('waiting');
 
   useEffect(() => {
-    startGame();
-    // Add game initialization logic
+    const initialProblems = Array(200).fill(null).map(() => generateProblem());
+    setProblems(initialProblems);
+    setGameStatus('playing');
+    
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          endGame();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  const startGame = async () => {
+  const endGame = async () => {
+    setGameStatus('completed');
     try {
-      const response = await fetch(`/api/matches/${gameId}/start`, {
-        method: 'POST',
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProblem(data.problem);
-        setGameStatus('playing');
-        // Start timer
-      }
-    } catch (error) {
-      console.error('Error starting game:', error);
-    }
-  };
-
-  const submitAnswer = async () => {
-    if (!answer || gameStatus !== 'playing') return;
-
-    try {
-      const response = await fetch(`/api/matches/${gameId}/answer`, {
+      await fetch('/api/matches/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-auth-token': localStorage.getItem('token')
         },
-        body: JSON.stringify({ answer: parseInt(answer) })
+        body: JSON.stringify({
+          matchId: gameId,
+          score,
+          problemsSolved: currentProblemIndex
+        })
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit answer');
-      }
-
-      const data = await response.json();
-
-      if (data.message === 'Match completed') {
-        setGameStatus('completed');
-        router.push('/');
-        return;
-      }
-
-      if (data.isCorrect) {
-        setScore(prev => prev + 1);
-      }
-
-      setProblem(data.nextProblem);
-      setAnswer('');
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error ending game:', error);
+    }
+    router.push('/');
+  };
+
+  const handleAnswerChange = (e) => {
+    const newAnswer = e.target.value;
+    setAnswer(newAnswer);
+
+    if (gameStatus !== 'playing') return;
+
+    const currentProblem = problems[currentProblemIndex];
+    if (parseInt(newAnswer) === currentProblem.correctAnswer) {
+      setScore(prev => prev + 1);
+      setCurrentProblemIndex(prev => prev + 1);
+      setAnswer('');
     }
   };
+
+  const currentProblem = problems[currentProblemIndex];
 
   return (
     <div className="text-center p-8">
@@ -78,16 +111,16 @@ export default function Game({ gameId, mode }) {
         <p className="text-xl">Time Left: {timeLeft}s</p>
       </div>
 
-      {problem && (
+      {currentProblem && gameStatus === 'playing' && (
         <div className="max-w-md mx-auto">
           <div className="text-4xl mb-8">
-            {problem.firstNumber} {problem.operator} {problem.secondNumber}
+            {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber}
           </div>
           
           <input
             type="number"
             value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
+            onChange={handleAnswerChange}
             className="w-full p-2 border rounded mb-4"
             autoFocus
           />

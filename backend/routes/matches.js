@@ -4,42 +4,6 @@ const auth = require('../middleware/auth');
 const Match = require('../models/Match');
 const User = require('../models/User');
 
-function generateProblem() {
-  const operators = ['+', '–', '×', '÷'];
-  const operator = operators[Math.floor(Math.random() * operators.length)];
-  let firstNumber, secondNumber, correctAnswer;
-
-  switch(operator) {
-    case '+':
-      firstNumber = Math.floor(Math.random() * 100);
-      secondNumber = Math.floor(Math.random() * 100);
-      correctAnswer = firstNumber + secondNumber;
-      break;
-    case '–':
-      firstNumber = Math.floor(Math.random() * 100);
-      secondNumber = Math.floor(Math.random() * firstNumber);
-      correctAnswer = firstNumber - secondNumber;
-      break;
-    case '×':
-      firstNumber = Math.floor(Math.random() * 12);
-      secondNumber = Math.floor(Math.random() * 12);
-      correctAnswer = firstNumber * secondNumber;
-      break;
-    case '÷':
-      secondNumber = Math.floor(Math.random() * 11) + 1;
-      correctAnswer = Math.floor(Math.random() * 12);
-      firstNumber = correctAnswer * secondNumber;
-      break;
-  }
-
-  return {
-    firstNumber,
-    secondNumber,
-    operator,
-    correctAnswer
-  };
-}
-
 router.post('/create', auth, async (req, res) => {
   try {
     const { challengedId, duration } = req.body;
@@ -69,67 +33,12 @@ router.post('/:matchId/start', auth, async (req, res) => {
     match.startTime = new Date();
     match.endTime = new Date(match.startTime.getTime() + match.duration * 1000);
 
-    const problem = generateProblem();
-    match.challengerProblems = [problem];
-    match.challengedProblems = [problem];
-
     await match.save();
     res.json(match);
   } catch (err) {
     res.status(500).send('Server error');
   }
 });
-
-router.post('/:matchId/answer', auth, async (req, res) => {
-  try {
-    const { answer } = req.body;
-    const match = await Match.findById(req.params.matchId);
-    
-    if (!match || match.status !== 'in_progress') {
-      return res.status(404).json({ message: 'Match not found or not in progress' });
-    }
-
-    const now = new Date();
-    if (now > match.endTime) {
-      match.status = 'completed';
-      await match.save();
-      return res.json({ message: 'Match completed', match });
-    }
-
-    const isChallenger = req.user.id === match.challenger.toString();
-    const problems = isChallenger ? match.challengerProblems : match.challengedProblems;
-    
-    
-    const currentProblem = problems[problems.length - 1];
-    currentProblem.userAnswer = parseInt(answer);
-    currentProblem.answeredAt = now;
-
-    if (currentProblem.userAnswer === currentProblem.correctAnswer) {
-      if (isChallenger) {
-        match.challengerScore += 1;
-      } else {
-        match.challengedScore += 1;
-      }
-    }
-
-    const nextProblem = generateProblem();
-    if (isChallenger) {
-      match.challengerProblems.push(nextProblem);
-    } else {
-      match.challengedProblems.push(nextProblem);
-    }
-
-    await match.save();
-    res.json({
-      match,
-      nextProblem,
-      isCorrect: currentProblem.userAnswer === currentProblem.correctAnswer
-    });
-  } catch (err) {
-    res.status(500).send('Server error');
-  }
-});
-
 
 
 router.get('/history', auth, async (req, res) => {
@@ -141,8 +50,7 @@ router.get('/history', auth, async (req, res) => {
         ]
       })
       .populate('challenger challenged', 'username')
-      .sort({ createdAt: -1 })
-      .limit(20);
+      .sort({ createdAt: -1 });
   
       const formattedMatches = matches.map(match => {
         const isChallenger = match.challenger._id.toString() === req.user.id;
