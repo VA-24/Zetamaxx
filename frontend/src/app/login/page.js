@@ -46,19 +46,19 @@ export default function Login() {
   };
 
   return (
-    <main class="flex min-h-screen flex-col items-center justify-center p-8">
-      <div class="w-full max-w-md">
-        <h1 class="text-4xl font-bold mb-8 text-center">Login</h1>
+    <main className="flex min-h-screen flex-col items-center">
+      <div className="w-full max-w-md bg-gray-300 p-4">
+        <h1 className="text-4xl font-bold mb-8 text-center">Login</h1>
         
         {error && (
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} class="space-y-4 mb-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mb-4">
           <div>
-            <label htmlFor="username" class="block text-sm font-medium mb-1">
+            <label htmlFor="username" className="block text-sm font-medium mb-1">
               Username
             </label>
             <input
@@ -67,13 +67,13 @@ export default function Login() {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              class="w-full p-2 border rounded"
+              class="w-full p-2 border"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" class="block text-sm font-medium mb-1">
+            <label htmlFor="password" className="block text-sm font-medium mb-1">
               Password
             </label>
             <input
@@ -82,7 +82,7 @@ export default function Login() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              class="w-full p-2 border rounded"
+              class="w-full p-2 border"
               required
             />
           </div>

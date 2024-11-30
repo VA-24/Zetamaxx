@@ -54,8 +54,8 @@ export default function Register() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-screen flex-col items-center">
+      <div className="w-full max-w-md bg-gray-200 p-4">
         <h1 className="text-4xl font-bold mb-8 text-center">Create an account</h1>
         
         {error && (
@@ -75,7 +75,7 @@ export default function Register() {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border"
               required
             />
           </div>
@@ -90,7 +90,7 @@ export default function Register() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border"
               required
             />
           </div>
@@ -105,20 +105,19 @@ export default function Register() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border"
               required
             />
           </div>
 
           <button
-            type="submit"
-            className="w-full bg-[#4a90e2] text-white py-2 px-4 rounded hover:bg-[#357abd] transition-colors"
+            type="submit" className="text-sm pb-2"
           >
             Register
           </button>
         </form>
 
-          <Link href="/login" className="text-[#4a90e2] hover:underline">
+          <Link href="/login" className="text-sm">
             Login instead
           </Link>
       </div>

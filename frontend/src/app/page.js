@@ -22,7 +22,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="bg-gray-300 p-8 w-full max-w-md mx-auto">
+      <div className="bg-gray-200 p-8 w-full max-w-md mx-auto">
         <h1 className="text-3xl font-bold mb-8">
           Welcome to zetamaxx{username ? `, ${username}` : ''}
         </h1>
