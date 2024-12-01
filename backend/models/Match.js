@@ -13,15 +13,16 @@ const problemSchema = new mongoose.Schema({
 });
 
 const matchSchema = new mongoose.Schema({
+  _id: String,
   challenger: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   challenged: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   duration: {
     type: Number,
@@ -30,8 +31,8 @@ const matchSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'in_progress', 'completed'],
-    default: 'pending'
+    enum: ['waiting', 'ready', 'in_progress', 'completed'],
+    default: 'waiting'
   },
   challengerProblems: [problemSchema],
   challengedProblems: [problemSchema],
@@ -44,7 +45,11 @@ const matchSchema = new mongoose.Schema({
     default: 0
   },
   startTime: Date,
-  endTime: Date
+  endTime: Date,
+  seed: {
+    type: Number,
+    required: true
+  }
 });
 
 module.exports = mongoose.model('Match', matchSchema);

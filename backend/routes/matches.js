@@ -6,17 +6,21 @@ const User = require('../models/User');
 
 router.post('/create', auth, async (req, res) => {
   try {
-    const { challengedId, duration } = req.body;
+    const { matchId, duration, status, seed } = req.body;
 
     const match = new Match({
+      _id: matchId,
       challenger: req.user.id,
-      challenged: challengedId,
-      duration: duration
+      duration: duration,
+      status: status || 'waiting',
+      seed: seed || Math.floor(Math.random() * 1000000)
     });
 
-    await match.save();
-    res.json(match);
+    const savedMatch = await match.save();
+    console.log('Match created:', savedMatch);
+    res.json(savedMatch);
   } catch (err) {
+    console.error('Error creating match:', err);
     res.status(500).send('Server error');
   }
 });
@@ -138,6 +142,56 @@ router.post('/:matchId/complete', auth, async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+
+router.get('/available-players', auth, async (req, res) => {
+  try {
+    const availablePlayers = await User.find({
+      _id: { $ne: req.user.id },
+      isOnline: true,
+      currentMatch: null
+    }).select('_id username');
+    
+    res.json(availablePlayers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+router.post('/:id/join', auth, async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.id);
+    if (!match) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    if (!match.challenger) {
+      match.challenger = req.user.id;
+    } else if (!match.challenged && match.challenger !== req.user.id) {
+      match.challenged = req.user.id;
+      match.status = 'ready';
+      match.startTime = new Date();
+    }
+
+    await match.save();
+    res.json(match);
+  } catch (err) {
+    res.status(500).send('Server error');
+  }
+});
+
+router.get('/:matchId', auth, async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+    res.json(match);
+  } catch (err) {
+    res.status(500).send('Server error');
+  }
+});
+
 
 
 module.exports = router;

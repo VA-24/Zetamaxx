@@ -16,6 +16,7 @@ export default function Login() {
       ...formData,
       [e.target.name]: e.target.value
     });
+    console.log(formData);
   };
 
   const handleSubmit = async (e) => {
@@ -88,13 +89,13 @@ export default function Login() {
           </div>
 
           <button
-            type="submit"
+            type="submit" className="text-sm pb-2"
           >
             Login
           </button>
         </form>
 
-          <Link href="/register">
+          <Link href="/register" class>
             Create an account instead
           </Link>
 
