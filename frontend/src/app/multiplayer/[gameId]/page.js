@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 function seededRandom(seed) {
@@ -7,47 +7,47 @@ function seededRandom(seed) {
   return x - Math.floor(x);
 }
 
-function generateProblem() {
-    const operators = ['+', '–', '×', '÷'];
-    const operator = operators[Math.floor(Math.random() * operators.length)];
-    let firstNumber, secondNumber, correctAnswer;
-  
-    switch(operator) {
-      case '+':
-        firstNumber = Math.floor(Math.random() * 99) + 2;
-        secondNumber = Math.floor(Math.random() * 99) + 2;
-        if (secondNumber > firstNumber) {
-          [firstNumber, secondNumber] = [secondNumber, firstNumber];
-        }
-        correctAnswer = firstNumber + secondNumber;
-        break;
-      case '–':
-        firstNumber = Math.floor(Math.random() * 199) + 2;
-        secondNumber = Math.floor(Math.random() * (firstNumber - 1)) + 1;
-        correctAnswer = firstNumber - secondNumber;
-        break;
-      case '×':
-        firstNumber = Math.floor(Math.random() * 11) + 2;
-        secondNumber = Math.floor(Math.random() * 99) + 2;
-        if (secondNumber > firstNumber) {
-          [firstNumber, secondNumber] = [secondNumber, firstNumber];
-        }
-        correctAnswer = firstNumber * secondNumber;
-        break;
-      case '÷':
-        secondNumber = Math.floor(Math.random() * 11) + 2;
-        correctAnswer = Math.floor(Math.random() * 84) + 2;
-        firstNumber = correctAnswer * secondNumber;
-        break;
-    }
-  
-    return {
-      firstNumber,
-      secondNumber,
-      operator,
-      correctAnswer
-    };
+function generateProblem(seed) {
+  const operators = ['+', '–', '×', '÷'];
+  const operator = operators[Math.floor(seededRandom(seed) * operators.length)];
+  let firstNumber, secondNumber, correctAnswer;
+
+  switch(operator) {
+    case '+':
+      firstNumber = Math.floor(seededRandom(seed + 1) * 99) + 2;
+      secondNumber = Math.floor(seededRandom(seed + 2) * 99) + 2;
+      if (secondNumber > firstNumber) {
+        [firstNumber, secondNumber] = [secondNumber, firstNumber];
+      }
+      correctAnswer = firstNumber + secondNumber;
+      break;
+    case '–':
+      firstNumber = Math.floor(seededRandom(seed + 1) * 199) + 2;
+      secondNumber = Math.floor(seededRandom(seed + 2) * (firstNumber - 1)) + 1;
+      correctAnswer = firstNumber - secondNumber;
+      break;
+    case '×':
+      firstNumber = Math.floor(seededRandom(seed + 1) * 11) + 2;
+      secondNumber = Math.floor(seededRandom(seed + 2) * 99) + 2;
+      if (secondNumber > firstNumber) {
+        [firstNumber, secondNumber] = [secondNumber, firstNumber];
+      }
+      correctAnswer = firstNumber * secondNumber;
+      break;
+    case '÷':
+      secondNumber = Math.floor(seededRandom(seed + 1) * 11) + 2;
+      correctAnswer = Math.floor(seededRandom(seed + 2) * 84) + 2;
+      firstNumber = correctAnswer * secondNumber;
+      break;
   }
+
+  return {
+    firstNumber,
+    secondNumber,
+    operator,
+    correctAnswer
+  };
+}
   
 
 export default function Game({ params }) {
@@ -61,6 +61,7 @@ export default function Game({ params }) {
   const [gameStatus, setGameStatus] = useState('waiting');
   const [matchData, setMatchData] = useState(null);
   const [gameResult, setGameResult] = useState(null);
+  const endGameRef = useRef(false);
 
   useEffect(() => {
     const joinMatch = async () => {
@@ -88,13 +89,19 @@ export default function Game({ params }) {
 
     const checkMatchStatus = setInterval(async () => {
       try {
-        const response = await fetch(`/api/matches/${params.gameId}`);
+        const response = await fetch(`/api/matches/${params.gameId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': localStorage.getItem('token')
+          }
+        });
         const match = await response.json();
         
-        if (match.status === 'ready') {
+        if (match.challenger && match.challenged) {
           setMatchData(match);
-          setTimeLeft(match.duration);
+          setTimeLeft(120);
           setGameStatus('playing');
+          console.log('opponent joined - match started')
           
           const initialProblems = Array(200).fill(null).map((_, i) => 
             generateProblem(match.seed + i)
@@ -114,7 +121,12 @@ export default function Game({ params }) {
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/matches/${params.gameId}`);
+        const response = await fetch(`/api/matches/${params.gameId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': localStorage.getItem('token')
+          }
+        });
         const match = await response.json();
         const isChallenger = match.challenger === matchData?.challenger;
         setOpponentScore(isChallenger ? match.challengedScore : match.challengerScore);
@@ -125,6 +137,55 @@ export default function Game({ params }) {
 
     return () => clearInterval(pollInterval);
   }, [gameStatus, params.gameId, matchData]);
+
+  useEffect(() => {
+    if (gameStatus !== 'playing') return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1 && !endGameRef.current) {
+          clearInterval(timer);
+          endGameRef.current = true;
+          endGame();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameStatus]);
+
+  const endGame = async () => {
+    if (gameStatus !== 'playing') return;
+    setGameStatus('completed');
+
+    try {
+      const response = await fetch(`/api/matches/${params.gameId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete match');
+      }
+
+      const match = await response.json();
+      const isChallenger = match.challenger === matchData?.challenger;
+      const playerScore = isChallenger ? match.challengerScore : match.challengedScore;
+      const opponentFinalScore = isChallenger ? match.challengedScore : match.challengerScore;
+
+      setGameResult({
+        won: playerScore > opponentFinalScore,
+        isDraw: playerScore === opponentFinalScore
+      });
+    } catch (error) {
+      console.error('Error completing match:', error);
+    }
+  };
 
   const handleAnswerChange = (e) => {
     const newAnswer = e.target.value;
@@ -169,7 +230,7 @@ export default function Game({ params }) {
         </div>
       )}
 
-      {gameStatus === 'playing' && currentProblem && (
+      {gameStatus === 'playing' && (
         <div className="max-w-md mx-auto">
           <div className="text-4xl mb-8">
             {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber}

@@ -160,22 +160,39 @@ router.get('/available-players', auth, async (req, res) => {
 
 router.post('/:id/join', auth, async (req, res) => {
   try {
+    console.log('Join attempt - User ID:', req.user.id);
+    console.log('Match ID:', req.params.id);
+    
     const match = await Match.findById(req.params.id);
+    console.log('Found match:', match);
+    
     if (!match) {
+      console.log('Match not found');
       return res.status(404).json({ message: 'Match not found' });
     }
 
+    console.log('Current challenger:', match.challenger);
+    console.log('Current challenged:', match.challenged);
+    console.log('Current user:', req.user.id);
+    console.log('Comparison:', match.challenger.toString() !== req.user.id);
+
     if (!match.challenger) {
+      console.log('Setting as challenger');
       match.challenger = req.user.id;
-    } else if (!match.challenged && match.challenger !== req.user.id) {
+    } else if (!match.challenged && match.challenger.toString() !== req.user.id) {
+      console.log('Setting as challenged');
       match.challenged = req.user.id;
       match.status = 'ready';
       match.startTime = new Date();
     }
 
+    console.log('Saving match...');
     await match.save();
-    res.json(match);
+    const updatedMatch = await Match.findById(req.params.id);
+    console.log('Updated match:', updatedMatch);
+    res.json(updatedMatch);
   } catch (err) {
+    console.error('Error in join route:', err);
     res.status(500).send('Server error');
   }
 });
@@ -187,6 +204,7 @@ router.get('/:matchId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
     res.json(match);
+    console.log(match);
   } catch (err) {
     res.status(500).send('Server error');
   }
