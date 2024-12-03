@@ -10,7 +10,6 @@ router.post('/create', auth, async (req, res) => {
 
     const match = new Match({
       _id: matchId,
-      challenger: req.user.id,
       duration: duration,
       status: status || 'waiting',
       seed: seed || Math.floor(Math.random() * 1000000)
@@ -160,36 +159,26 @@ router.get('/available-players', auth, async (req, res) => {
 
 router.post('/:id/join', auth, async (req, res) => {
   try {
-    console.log('Join attempt - User ID:', req.user.id);
-    console.log('Match ID:', req.params.id);
+
     
     const match = await Match.findById(req.params.id);
-    console.log('Found match:', match);
-    
+
     if (!match) {
       console.log('Match not found');
       return res.status(404).json({ message: 'Match not found' });
     }
 
-    console.log('Current challenger:', match.challenger);
-    console.log('Current challenged:', match.challenged);
-    console.log('Current user:', req.user.id);
-    console.log('Comparison:', match.challenger.toString() !== req.user.id);
 
     if (!match.challenger) {
-      console.log('Setting as challenger');
       match.challenger = req.user.id;
     } else if (!match.challenged && match.challenger.toString() !== req.user.id) {
-      console.log('Setting as challenged');
       match.challenged = req.user.id;
       match.status = 'ready';
       match.startTime = new Date();
     }
 
-    console.log('Saving match...');
     await match.save();
     const updatedMatch = await Match.findById(req.params.id);
-    console.log('Updated match:', updatedMatch);
     res.json(updatedMatch);
   } catch (err) {
     console.error('Error in join route:', err);
@@ -204,12 +193,41 @@ router.get('/:matchId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
     res.json(match);
-    console.log(match);
   } catch (err) {
     res.status(500).send('Server error');
   }
 });
 
+router.post('/:matchId/score', auth, async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ message: 'match not found' });
+    }
 
+    const { score } = req.body;
+    const userId = req.user.id;
+
+    if (userId === match.challenger.toString()) {
+      match.challengerScore = score;
+    } else if (userId === match.challenged.toString()) {
+      match.challengedScore = score;
+    } else {
+      return res.status(403).json({ message: 'user not part of this match' });
+    }
+
+    await match.save();
+    res.json({ 
+      message: 'Score updated',
+      match: {
+        challengerScore: match.challengerScore,
+        challengedScore: match.challengedScore
+      }
+    });
+  } catch (err) {
+    console.error('error updating score:', err);
+    res.status(500).send('server error');
+  }
+});
 
 module.exports = router;

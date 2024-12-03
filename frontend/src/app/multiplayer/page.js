@@ -18,16 +18,16 @@ export default function MultiPlayer() {
         },
         body: JSON.stringify({
           matchId: gameId,
-          challenger: localStorage.getItem('userId'),
           duration: 120,
-          status: 'waiting'
+          status: 'waiting',
+          seed: Math.floor(Math.random() * 1000000)
         })
       });
 
       if (!response.ok) {
         throw new Error('Failed to create match');
       }
-
+      
       const link = `${window.location.origin}/multiplayer/${gameId}`;
       setGeneratedLink(link);
     } catch (error) {

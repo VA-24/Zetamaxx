@@ -63,6 +63,7 @@ export default function Game({ params }) {
   const [gameResult, setGameResult] = useState(null);
   const endGameRef = useRef(false);
 
+  //joinmatch
   useEffect(() => {
     const joinMatch = async () => {
       try {
@@ -84,6 +85,7 @@ export default function Game({ params }) {
     joinMatch();
   }, [params.gameId]);
 
+  //start match
   useEffect(() => {
     if (gameStatus === 'playing') return;
 
@@ -99,7 +101,6 @@ export default function Game({ params }) {
         
         if (match.challenger && match.challenged) {
           setMatchData(match);
-          setTimeLeft(120);
           setGameStatus('playing');
           console.log('opponent joined - match started')
           
@@ -116,6 +117,7 @@ export default function Game({ params }) {
     return () => clearInterval(checkMatchStatus);
   }, [gameStatus, params.gameId]);
 
+  //set opponent score
   useEffect(() => {
     if (gameStatus !== 'playing') return;
 
@@ -138,24 +140,35 @@ export default function Game({ params }) {
     return () => clearInterval(pollInterval);
   }, [gameStatus, params.gameId, matchData]);
 
+  //timer
   useEffect(() => {
-    if (gameStatus !== 'playing') return;
+    if (gameStatus !== 'playing' || !matchData?.startTime) return;
+
+    const calculateTimeLeft = () => {
+      const startTime = new Date(matchData.startTime).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      const remaining = Math.max(120 - elapsed, 0);
+      
+      if (remaining === 0 && !endGameRef.current) {
+        endGameRef.current = true;
+        endGame();
+      }
+      
+      return remaining;
+    };
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1 && !endGameRef.current) {
-          clearInterval(timer);
-          endGameRef.current = true;
-          endGame();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const remaining = calculateTimeLeft();
+      setTimeLeft(remaining);
+    }, 100);
+
+    setTimeLeft(calculateTimeLeft());
 
     return () => clearInterval(timer);
-  }, [gameStatus]);
+  }, [gameStatus, matchData?.startTime]);
 
+  //complete game
   const endGame = async () => {
     if (gameStatus !== 'playing') return;
     setGameStatus('completed');
@@ -187,6 +200,7 @@ export default function Game({ params }) {
     }
   };
 
+  //answer logic
   const handleAnswerChange = (e) => {
     const newAnswer = e.target.value;
     setAnswer(newAnswer);
@@ -213,7 +227,7 @@ export default function Game({ params }) {
   const currentProblem = problems[currentProblemIndex];
 
   return (
-    <div className="text-center p-8">
+    <div className="text-center">
       {gameStatus === 'waiting' && (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h2 className="text-2xl font-bold mb-4">Waiting for opponent...</h2>
@@ -221,48 +235,51 @@ export default function Game({ params }) {
       )}
 
       {gameStatus === 'playing' && (
-        <div className="mb-8">
-          <div className="flex justify-center gap-8 mb-4">
-            <h2 className="text-2xl font-bold">Your score: {score}</h2>
-            <h2 className="text-2xl font-bold">Opponent's score: {opponentScore}</h2>
+        <div className="flex justify-between items-center mb-8 px-8 pt-4">
+          <p className="text-xl">Seconds left: {timeLeft}</p>
+          <div className="flex flex-col gap-3">
+            <h2 className="text-xl font-bold">Your score: {score}</h2>
+            <h2 className="text-xl">Opponent's score: {opponentScore}</h2>
           </div>
-          <p className="text-xl">Time left: {timeLeft}s</p>
+          
         </div>
       )}
 
-      {gameStatus === 'playing' && (
-        <div className="max-w-md mx-auto">
-          <div className="text-4xl mb-8">
-            {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber}
+      
+    <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
+      {gameStatus === 'playing' && currentProblem && (
+          <div className="flex items-center justify-center space-x-4">
+          <div className="text-4xl">
+            {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber} = 
           </div>
           
           <input
-            type="number"
             value={answer}
             onChange={handleAnswerChange}
-            className="w-full p-2 border rounded mb-4"
+            className="w-32 p-2 border rounded text-4xl"
             autoFocus
           />
         </div>
       )}
       
       {gameStatus === 'completed' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg">
-            <h2 className="text-2xl font-bold mb-4">
+
+          <div className="text-center">
+            <h2 className="text-md font-bold mb-4">
               {gameResult?.won ? 'You win' : gameResult?.isDraw ? "It's a draw" : 'You lose'}
             </h2>
-            <p className="mb-2">Your Score: {score}</p>
-            <p className="mb-4">Opponent's Score: {opponentScore}</p>
+            <p className="mb-2 text-md">Your Score: {score}</p>
+            <p className="mb-2 text-md">Opponent's Score: {opponentScore}</p>
             <button
               onClick={() => router.push('/multiplayer')}
-              className="game-button"
+              className="game-button text-sm underline text-blue-800"
             >
-              Play Again
+              Try again
             </button>
           </div>
-        </div>
+
       )}
+      </div>
     </div>
   );
 }
