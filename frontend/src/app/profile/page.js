@@ -64,7 +64,7 @@ export default function Profile() {
                   key={index} 
                   className="border rounded-lg p-4"
                 >
-                  <div className="flex justify-between p-2 border rounded items-center">
+                  <div className="flex justify-between border rounded items-center">
                     <span className="text-lg font-semibold">
                       Score: {result.score}
                     </span>

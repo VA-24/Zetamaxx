@@ -12,16 +12,6 @@ router.post('/search', auth, async (req, res) => {
     user.lookingForMatch = true;
     await user.save();
 
-    // Try to find a match immediately
-    const opponent = await User.findOne({
-      _id: { $ne: user._id },
-      lookingForMatch: true,
-      rating: { 
-        $gte: user.rating - 150, 
-        $lte: user.rating + 150 
-      }
-    });
-
 
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
