@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  lookingForMatch: {
+    type: Boolean,
+    default: false
+  },
   elo: {
     type: Number,
     default: 1000
@@ -34,9 +38,9 @@ const userSchema = new mongoose.Schema({
     timestamp: Date,
   }],
   multiplayerResults: [{
-    score: Number,
+    finalScore: {'challengerScore': Number, 'challengedScore': Number},
     timestamp: Date,
-    opponent: String,
+    players: {'challenger': String, 'challenged': String},
     rating: Number
   }],
   createdAt: {

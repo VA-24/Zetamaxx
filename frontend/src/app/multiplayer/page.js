@@ -1,11 +1,56 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function MultiPlayer() {
   const router = useRouter();
   const [generatedLink, setGeneratedLink] = useState('');
+  const [isMatchmaking, setIsMatchmaking] = useState(false);
+
+  // Add matchmaking polling
+  useEffect(() => {
+    let pollInterval;
+    if (isMatchmaking) {
+      pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/api/matchmaking/status', {
+            headers: {
+              'x-auth-token': localStorage.getItem('token')
+            }
+          });
+          const data = await response.json();
+          
+          if (data.found) {
+            setIsMatchmaking(false);
+            router.push(`/multiplayer/${data.matchId}`);
+          }
+        } catch (error) {
+          console.error('Error checking matchmaking status:', error);
+        }
+      }, 2000);
+    }
+
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [isMatchmaking, router]);
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (isMatchmaking) {
+        fetch('/api/matchmaking/cancel', {
+          method: 'POST',
+          headers: {
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }).catch(console.error);
+      }
+    };
+  }, [isMatchmaking]);
 
   const generateLink = async () => {
     const gameId = uuidv4();
@@ -20,56 +65,41 @@ export default function MultiPlayer() {
           matchId: gameId,
           duration: 120,
           status: 'waiting',
-          seed: Math.floor(Math.random() * 1000000)
+          seed: Math.floor(Math.random() * 1000000),
+          challenger: null,
+          challenged: null
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create match');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create match');
       }
       
       const link = `${window.location.origin}/multiplayer/${gameId}`;
       setGeneratedLink(link);
     } catch (error) {
       console.error('Error creating match:', error);
+      alert('Failed to create match: ' + error.message);
     }
   };
 
   const findRandomMatch = async () => {
     try {
-      const response = await fetch('/api/matches/available-players', {
+      setIsMatchmaking(true);
+      const response = await fetch('/api/matchmaking/search', {
+        method: 'POST',
         headers: {
           'x-auth-token': localStorage.getItem('token')
         }
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch available players');
+        throw new Error('Failed to start matchmaking');
       }
-
-      const players = await response.json();
-      if (players.length === 0) {
-        alert('No players available right now');
-        return;
-      }
-
-      const randomPlayer = players[Math.floor(Math.random() * players.length)];
-      const matchResponse = await fetch('/api/matches/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({
-          challengedId: randomPlayer._id,
-          duration: 120
-        })
-      });
-
-      const match = await matchResponse.json();
-      router.push(`/multiplayer/${match.id}`);
     } catch (error) {
-      console.error('Error finding match:', error);
+      console.error('Error starting matchmaking:', error);
+      setIsMatchmaking(false);
     }
   };
 
@@ -109,12 +139,34 @@ export default function MultiPlayer() {
             )}
           </div>
 
-          <button 
-            onClick={findRandomMatch}
-            className="game-button w-48 h-fit"
-          >
-            Vs. random
-          </button>
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={findRandomMatch}
+              className={`game-button w-48 h-fit ${isMatchmaking ? 'opacity-50' : ''}`}
+              disabled={isMatchmaking}
+            >
+              {isMatchmaking ? 'Finding Match...' : 'Vs. random'}
+            </button>
+            {isMatchmaking && (
+              <div className="mt-4 text-center">
+                <p>Matchmaking in progress...</p>
+                <button 
+                  onClick={() => {
+                    setIsMatchmaking(false);
+                    fetch('/api/matchmaking/cancel', {
+                      method: 'POST',
+                      headers: {
+                        'x-auth-token': localStorage.getItem('token')
+                      }
+                    }).catch(console.error);
+                  }}
+                  className="text-red-500 underline mt-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </main>

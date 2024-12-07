@@ -9,12 +9,14 @@ async function migrateUsers() {
     console.log('Connected to MongoDB');
     
     const result = await User.updateMany(
-      { singleplayerResults: { $exists: true } },
+      {},
       { 
         $set: { 
-          singleplayerResults: [],
+          lookingForMatch: false,
+          rating: 1000
         } 
-      }
+      },
+      { upsert: false }
     );
 
     console.log(`Migration completed. Modified ${result.modifiedCount} documents`);

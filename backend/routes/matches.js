@@ -112,7 +112,6 @@ router.post('/:matchId/complete', auth, async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
 
-    
     const isDraw = match.challengerScore === match.challengedScore;
     let winnerId, loserId;
     
@@ -129,13 +128,69 @@ router.post('/:matchId/complete', auth, async (req, res) => {
       await User.updateEloRatings(winnerId, loserId);
     }
 
+    // Get both users
     const challenger = await User.findById(match.challenger);
     const challenged = await User.findById(match.challenged);
     
+    // Update average scores
     await challenger.updateAverageScore(match.challengerScore);
     await challenged.updateAverageScore(match.challengedScore);
 
-    res.json({ message: 'match completed' });
+    // Create match result objects for both players
+    const matchResult = {
+      finalScore: {
+        challengerScore: match.challengerScore,
+        challengedScore: match.challengedScore
+      },
+      timestamp: new Date(),
+      players: {
+        challenger: challenger.username,
+        challenged: challenged.username
+      }
+    };
+
+    // Add results to both users' multiplayerResults array with their respective ratings
+    await User.findByIdAndUpdate(
+      challenger._id,
+      { 
+        $push: { 
+          multiplayerResults: {
+            ...matchResult,
+            rating: challenger.rating
+          }
+        }
+      }
+    );
+
+    await User.findByIdAndUpdate(
+      challenged._id,
+      { 
+        $push: { 
+          multiplayerResults: {
+            ...matchResult,
+            rating: challenged.rating
+          }
+        }
+      }
+    );
+
+    // Update match status
+    match.status = 'completed';
+    await match.save();
+
+    res.json({ 
+      message: 'match completed',
+      challenger: {
+        username: challenger.username,
+        score: match.challengerScore,
+        rating: challenger.rating
+      },
+      challenged: {
+        username: challenged.username,
+        score: match.challengedScore,
+        rating: challenged.rating
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');

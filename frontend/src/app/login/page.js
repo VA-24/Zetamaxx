@@ -40,6 +40,7 @@ export default function Login() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', formData.username);
+      localStorage.setItem('userId', data.userId);
       router.push('/');
     } catch (err) {
       setError(err.message);

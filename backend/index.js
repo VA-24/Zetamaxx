@@ -17,9 +17,10 @@ app.use(logger);
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/matches', require('./routes/matches'));
+app.use('/api/matchmaking', require('./routes/matchmaking'));
 
 app.get('/api/', (req, res) => {
-  res.json({ message: 'server operations nominal' });
+  res.json({ message: 'serve online' });
 });
 
 app.listen(port, () => {

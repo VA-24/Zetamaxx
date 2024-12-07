@@ -62,6 +62,7 @@ export default function Game({ params }) {
   const [matchData, setMatchData] = useState(null);
   const [gameResult, setGameResult] = useState(null);
   const endGameRef = useRef(false);
+  const [isMatchEnded, setIsMatchEnded] = useState(false);
 
   //joinmatch
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function Game({ params }) {
 
   //set opponent score
   useEffect(() => {
-    if (gameStatus !== 'playing') return;
+    if (gameStatus !== 'playing' || isMatchEnded) return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -130,19 +131,27 @@ export default function Game({ params }) {
           }
         });
         const match = await response.json();
-        const isChallenger = match.challenger === matchData?.challenger;
+        
+        const currentUserId = localStorage.getItem('userId');
+        const isChallenger = match.challenger === currentUserId;
+        
         setOpponentScore(isChallenger ? match.challengedScore : match.challengerScore);
+        
+        if (match.status === 'completed') {
+          setIsMatchEnded(true);
+          endGame();
+        }
       } catch (error) {
         console.error('Error polling match:', error);
       }
     }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [gameStatus, params.gameId, matchData]);
+  }, [gameStatus, params.gameId, matchData, isMatchEnded]);
 
   //timer
   useEffect(() => {
-    if (gameStatus !== 'playing' || !matchData?.startTime) return;
+    if (gameStatus !== 'playing' || !matchData?.startTime || isMatchEnded) return;
 
     const calculateTimeLeft = () => {
       const startTime = new Date(matchData.startTime).getTime();
@@ -153,6 +162,7 @@ export default function Game({ params }) {
       if (remaining === 0 && !endGameRef.current) {
         endGameRef.current = true;
         endGame();
+        setIsMatchEnded(true);
       }
       
       return remaining;
@@ -166,12 +176,13 @@ export default function Game({ params }) {
     setTimeLeft(calculateTimeLeft());
 
     return () => clearInterval(timer);
-  }, [gameStatus, matchData?.startTime]);
+  }, [gameStatus, matchData?.startTime, isMatchEnded]);
 
   //complete game
   const endGame = async () => {
     if (gameStatus !== 'playing') return;
     setGameStatus('completed');
+    setIsMatchEnded(true);
 
     try {
       const response = await fetch(`/api/matches/${params.gameId}/complete`, {
@@ -193,7 +204,9 @@ export default function Game({ params }) {
 
       setGameResult({
         won: playerScore > opponentFinalScore,
-        isDraw: playerScore === opponentFinalScore
+        isDraw: playerScore === opponentFinalScore,
+        playerScore,
+        opponentFinalScore
       });
     } catch (error) {
       console.error('Error completing match:', error);
@@ -234,50 +247,48 @@ export default function Game({ params }) {
         </div>
       )}
 
-      {gameStatus === 'playing' && (
-        <div className="flex justify-between items-center mb-8 px-8 pt-4">
-          <p className="text-xl">Seconds left: {timeLeft}</p>
-          <div className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold">Your score: {score}</h2>
-            <h2 className="text-xl">Opponent's score: {opponentScore}</h2>
+      {gameStatus === 'playing' && !isMatchEnded && (
+        <>
+          <div className="flex justify-between items-center mb-8 px-8 pt-4">
+            <p className="text-xl">Seconds left: {timeLeft}</p>
+            <div className="flex flex-col gap-3">
+              <h2 className="text-xl font-bold">Your score: {score}</h2>
+              <h2 className="text-xl">Opponent's score: {opponentScore}</h2>
+            </div>
           </div>
-          
-        </div>
+
+          <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
+            {currentProblem && (
+              <div className="flex items-center justify-center space-x-4">
+                <div className="text-4xl">
+                  {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber} = 
+                </div>
+                <input
+                  value={answer}
+                  onChange={handleAnswerChange}
+                  className="w-32 p-2 border rounded text-4xl"
+                  autoFocus
+                />
+              </div>
+            )}
+          </div>
+        </>
       )}
-
       
-    <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
-      {gameStatus === 'playing' && currentProblem && (
-          <div className="flex items-center justify-center space-x-4">
-          <div className="text-4xl">
-            {currentProblem.firstNumber} {currentProblem.operator} {currentProblem.secondNumber} = 
-          </div>
-          
-          <input
-            value={answer}
-            onChange={handleAnswerChange}
-            className="w-32 p-2 border rounded text-4xl"
-            autoFocus
-          />
+      <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
+      {(gameStatus === 'completed' || isMatchEnded) && gameResult && (
+        <div className="text-center">
+          <h2 className="text-md font-bold mb-4">
+            {gameResult.won ? 'You Win!' : gameResult.isDraw ? "It's a Draw!" : 'You Lose!'}
+          </h2>
+          <p className="text-md mb-4">You: {score} | Opponent: {opponentScore}</p>
+          <button
+            onClick={() => router.push('/multiplayer')}
+            className="game-button text-sm underline text-blue-800"
+          >
+            Play Again
+          </button>
         </div>
-      )}
-      
-      {gameStatus === 'completed' && (
-
-          <div className="text-center">
-            <h2 className="text-md font-bold mb-4">
-              {gameResult?.won ? 'You win' : gameResult?.isDraw ? "It's a draw" : 'You lose'}
-            </h2>
-            <p className="mb-2 text-md">Your Score: {score}</p>
-            <p className="mb-2 text-md">Opponent's Score: {opponentScore}</p>
-            <button
-              onClick={() => router.push('/multiplayer')}
-              className="game-button text-sm underline text-blue-800"
-            >
-              Try again
-            </button>
-          </div>
-
       )}
       </div>
     </div>

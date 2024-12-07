@@ -24,6 +24,7 @@ router.post('/register', async (req, res) => {
     user.password = await bcrypt.hash(password, salt);
 
     await user.save();
+    
 
     const payload = {
       user: {
@@ -31,15 +32,18 @@ router.post('/register', async (req, res) => {
       }
     };
 
-    jwt.sign(
-      payload,
+
+    const token = jwt.sign(
+      { user: { id: user._id } },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      }
+      { expiresIn: '168h' }
     );
+
+    res.json({
+      token,
+      userId: user._id,
+      message: 'Login successful'
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -61,21 +65,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'invalid credentials' });
     }
 
-    const payload = {
-      user: {
-        id: user.id
-      }
-    };
-
-    jwt.sign(
-      payload,
+    const token = jwt.sign(
+      { user: { id: user._id } },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      }
+      { expiresIn: '168h' }
     );
+
+    res.json({
+      token,
+      userId: user._id,
+      message: 'Login successful'
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -88,6 +88,34 @@ router.get('/leaderboard', async (req, res) => {
     res.json(leaderboard);
   } catch (err) {
     console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+router.get('/profile', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select('-password')
+      .select({
+        username: 1,
+        email: 1,
+        elo: 1,
+        averageScore: 1,
+        gamesPlayed: 1,
+        singleplayerResults: 1,
+        multiplayerResults: 1
+      });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.singleplayerResults.sort((a, b) => b.timestamp - a.timestamp);
+    user.multiplayerResults.sort((a, b) => b.timestamp - a.timestamp);
+
+    res.json(user);
+  } catch (err) {
+    console.error('Profile fetch error:', err);
     res.status(500).send('Server error');
   }
 });
