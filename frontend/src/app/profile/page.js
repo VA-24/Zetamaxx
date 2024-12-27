@@ -44,27 +44,28 @@ export default function Profile() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 text-center">
           {userData?.username}'s Profile
         </h1>
+        <p className="text-sm mb-8 text-center"><a href='/'>Home</a></p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Singleplayer Section */}
           <div className="bg-gray-200 p-6 rounded-lg shadow">
-            <div className="mb-6 text-center">
+            <div className="mb-4 text-center">
               <h2 className="text-xl font-semibold mb-2">Singleplayer Stats</h2>
-              <p className="text-xl font-bold ">
+              <p className="text-xl font-bold">
                 Average Score: {userData?.averageScore || 0}
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               {userData?.singleplayerResults?.map((result, index) => (
                 <div 
                   key={index} 
-                  className="border rounded-lg p-4"
+                  className="border rounded-lg p-2"
                 >
-                  <div className="flex justify-between border rounded items-center">
+                  <div className="flex justify-between bg-gray-300 border rounded items-center px-3 py-2">
                     <span className="text-lg font-semibold">
                       Score: {result.score}
                     </span>
@@ -78,10 +79,10 @@ export default function Profile() {
           </div>
 
           {/* Multiplayer Section */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="mb-6 text-center">
+          <div className="bg-gray-200 mx-2 p-6 rounded-lg shadow">
+            <div className="mb-4 text-center">
               <h2 className="text-xl font-semibold mb-2">Multiplayer Stats</h2>
-              <p className="text-2xl font-bold">
+              <p className="text-xl font-bold">
                 Current Rating: {userData?.elo || 1000}
               </p>
             </div>
@@ -90,7 +91,7 @@ export default function Profile() {
               {userData?.multiplayerResults?.map((match, index) => (
                 <div 
                   key={index} 
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="bg-gray-300 border rounded-lg p-2 "
                 >
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">

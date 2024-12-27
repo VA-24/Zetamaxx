@@ -105,97 +105,97 @@ router.get('/history', auth, async (req, res) => {
     }
   });
 
-router.post('/:matchId/complete', auth, async (req, res) => {
-  try {
-    const match = await Match.findById(req.params.matchId);
-    if (!match) {
-      return res.status(404).json({ message: 'Match not found' });
-    }
-
-    const isDraw = match.challengerScore === match.challengedScore;
-    let winnerId, loserId;
-    
-    if (!isDraw) {
-      winnerId = match.challengerScore > match.challengedScore ? 
-        match.challenger : match.challenged;
-      loserId = match.challengerScore > match.challengedScore ? 
-        match.challenged : match.challenger;
-    }
-
-    if (isDraw) {
-      await User.updateEloRatings(match.challenger, match.challenged, true);
-    } else {
-      await User.updateEloRatings(winnerId, loserId);
-    }
-
-    // Get both users
-    const challenger = await User.findById(match.challenger);
-    const challenged = await User.findById(match.challenged);
-    
-    // Update average scores
-    await challenger.updateAverageScore(match.challengerScore);
-    await challenged.updateAverageScore(match.challengedScore);
-
-    // Create match result objects for both players
-    const matchResult = {
-      finalScore: {
-        challengerScore: match.challengerScore,
-        challengedScore: match.challengedScore
-      },
-      timestamp: new Date(),
-      players: {
-        challenger: challenger.username,
-        challenged: challenged.username
+  router.post('/:matchId/complete', auth, async (req, res) => {
+    try {
+      const match = await Match.findById(req.params.matchId);
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
       }
-    };
-
-    // Add results to both users' multiplayerResults array with their respective ratings
-    await User.findByIdAndUpdate(
-      challenger._id,
-      { 
-        $push: { 
-          multiplayerResults: {
-            ...matchResult,
-            rating: challenger.rating
+  
+      const isDraw = match.challengerScore === match.challengedScore;
+      let winnerId, loserId;
+      
+      if (!isDraw) {
+        winnerId = match.challengerScore > match.challengedScore ? 
+          match.challenger : match.challenged;
+        loserId = match.challengerScore > match.challengedScore ? 
+          match.challenged : match.challenger;
+      }
+  
+      if (isDraw) {
+        await User.updateEloRatings(match.challenger, match.challenged, true);
+      } else {
+        await User.updateEloRatings(winnerId, loserId);
+      }
+  
+      // Get both users
+      const challenger = await User.findById(match.challenger);
+      const challenged = await User.findById(match.challenged);
+      
+      // Update average scores
+      await challenger.updateAverageScore(match.challengerScore);
+      await challenged.updateAverageScore(match.challengedScore);
+  
+      // Create match result objects for both players
+      const matchResult = {
+        finalScore: {
+          challengerScore: match.challengerScore,
+          challengedScore: match.challengedScore
+        },
+        timestamp: new Date(),
+        players: {
+          challenger: challenger.username,
+          challenged: challenged.username
+        }
+      };
+  
+      // Add results to both users' multiplayerResults array with their respective ratings
+      await User.findByIdAndUpdate(
+        challenger._id,
+        { 
+          $push: { 
+            multiplayerResults: {
+              ...matchResult,
+              rating: challenger.rating
+            }
           }
         }
-      }
-    );
-
-    await User.findByIdAndUpdate(
-      challenged._id,
-      { 
-        $push: { 
-          multiplayerResults: {
-            ...matchResult,
-            rating: challenged.rating
+      );
+  
+      await User.findByIdAndUpdate(
+        challenged._id,
+        { 
+          $push: { 
+            multiplayerResults: {
+              ...matchResult,
+              rating: challenged.rating
+            }
           }
         }
-      }
-    );
-
-    // Update match status
-    match.status = 'completed';
-    await match.save();
-
-    res.json({ 
-      message: 'match completed',
-      challenger: {
-        username: challenger.username,
-        score: match.challengerScore,
-        rating: challenger.rating
-      },
-      challenged: {
-        username: challenged.username,
-        score: match.challengedScore,
-        rating: challenged.rating
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
-  }
-});
+      );
+  
+      // Update match status
+      match.status = 'completed';
+      await match.save();
+  
+      res.json({ 
+        message: 'match completed',
+        challenger: {
+          username: challenger.username,
+          score: match.challengerScore,
+          rating: challenger.rating
+        },
+        challenged: {
+          username: challenged.username,
+          score: match.challengedScore,
+          rating: challenged.rating
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Server error');
+    }
+  });
 
 router.get('/available-players', auth, async (req, res) => {
   try {
@@ -221,6 +221,10 @@ router.post('/:id/join', auth, async (req, res) => {
     if (!match) {
       console.log('Match not found');
       return res.status(404).json({ message: 'Match not found' });
+    }
+
+    if (match.challenger && match.challenged) {
+      return res.status(403).json({ message: 'Game is full' });
     }
 
 

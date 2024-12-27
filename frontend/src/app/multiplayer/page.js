@@ -14,7 +14,7 @@ export default function MultiPlayer() {
     if (isMatchmaking) {
       pollInterval = setInterval(async () => {
         try {
-          const response = await fetch('/api/matchmaking/status', {
+          const response = await fetch('/api/matchmaking/search', {
             headers: {
               'x-auth-token': localStorage.getItem('token')
             }
@@ -87,7 +87,7 @@ export default function MultiPlayer() {
   const findRandomMatch = async () => {
     try {
       setIsMatchmaking(true);
-      const response = await fetch('/api/matchmaking/search', {
+      const response = await fetch('/api/matchmaking/initiate', {
         method: 'POST',
         headers: {
           'x-auth-token': localStorage.getItem('token')
@@ -106,9 +106,10 @@ export default function MultiPlayer() {
   return (
     <main className="min-h-screen bg-white">
       <div className="bg-gray-200 p-8 w-full max-w-lg mx-auto transition-all duration-200">
-        <h1 className="text-3xl font-bold mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 text-center">
           Multiplayer
         </h1>
+        <p className="text-sm mb-8 text-center"><a href='/'>Home</a></p>
         
         <div className="flex flex-row justify-center gap-8">
           <div className="flex flex-col items-center">

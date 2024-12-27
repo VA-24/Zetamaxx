@@ -63,6 +63,7 @@ export default function Game({ params }) {
   const [gameResult, setGameResult] = useState(null);
   const endGameRef = useRef(false);
   const [isMatchEnded, setIsMatchEnded] = useState(false);
+  const [isGameFull, setIsGameFull] = useState(false);
 
   //joinmatch
   useEffect(() => {
@@ -75,6 +76,11 @@ export default function Game({ params }) {
             'x-auth-token': localStorage.getItem('token')
           }
         });
+
+        if (response.status === 403) {
+          setIsGameFull(true);
+          return;
+        }
         
         if (!response.ok) {
           throw new Error('Failed to join match');
@@ -241,6 +247,20 @@ export default function Game({ params }) {
 
   return (
     <div className="text-center">
+
+  {isGameFull ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <h2 className="text-2xl font-bold mb-4">This game is full</h2>
+          <button
+            onClick={() => router.push('/multiplayer')}
+            className="game-button text-sm underline text-blue-800"
+          >
+            Return to Homepage
+          </button>
+        </div>
+      ) : (
+        <>
+
       {gameStatus === 'waiting' && (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h2 className="text-2xl font-bold mb-4">Waiting for opponent...</h2>
@@ -275,13 +295,12 @@ export default function Game({ params }) {
         </>
       )}
       
-      <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
+      
       {(gameStatus === 'completed' || isMatchEnded) && gameResult && (
+        <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
         <div className="text-center">
-          <h2 className="text-md font-bold mb-4">
-            {gameResult.won ? 'You Win!' : gameResult.isDraw ? "It's a Draw!" : 'You Lose!'}
-          </h2>
-          <p className="text-md mb-4">You: {score} | Opponent: {opponentScore}</p>
+
+          <p className="text-md mb-4 font-bold">You: {score} | Opponent: {opponentScore}</p>
           <button
             onClick={() => router.push('/multiplayer')}
             className="game-button text-sm underline text-blue-800"
@@ -289,8 +308,10 @@ export default function Game({ params }) {
             Play Again
           </button>
         </div>
+        </div>
       )}
-      </div>
+      </>
+      )}
     </div>
   );
 }

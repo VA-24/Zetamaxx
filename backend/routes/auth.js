@@ -98,7 +98,6 @@ router.get('/profile', auth, async (req, res) => {
       .select('-password')
       .select({
         username: 1,
-        email: 1,
         elo: 1,
         averageScore: 1,
         gamesPlayed: 1,
