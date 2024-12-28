@@ -10,7 +10,7 @@ router.post('/create', auth, async (req, res) => {
 
     const match = new Match({
       _id: matchId,
-      duration: duration,
+      duration: 10,
       status: status || 'waiting',
       type: 'vsFriend',
       seed: seed || Math.floor(Math.random() * 1000000)
@@ -123,18 +123,32 @@ router.get('/history', auth, async (req, res) => {
           match.challenged : match.challenger;
       }
   
-      if (isDraw) {
-        await User.updateEloRatings(match.challenger, match.challenged, true);
-      } else {
-        await User.updateEloRatings(winnerId, loserId);
-      }
   
       // Get both users
       const challenger = await User.findById(match.challenger);
       const challenged = await User.findById(match.challenged);
+      const callingUser = await User.findById(req.user.id);
+
+      console.log('Complete route called by:', {
+        callingUserId: callingUser.id,
+        isChallenger: callingUser.id === challenger.id,
+        isChallenged: callingUser.id === challenged.id,
+        matchStatus: match.status
+      });
+
+      // Only update ELO ratings once when the first player completes
+      if (match.status !== 'completed') {
+        if (isDraw) {
+          await User.updateEloRatings(match.challenger, match.challenged, true);
+        } else {
+          await User.updateEloRatings(winnerId, loserId);
+        }
+      }
+
+      const challengerElo = challenger.elo;
+      const challengedElo = challenged.elo;
       
-  
-      // Create match result objects for both players
+      // Create match result object
       const matchResult = {
         finalScore: {
           challengerScore: match.challengerScore,
@@ -146,35 +160,41 @@ router.get('/history', auth, async (req, res) => {
           challenged: challenged.username
         }
       };
-  
-      // Add results to both users' multiplayerResults array with their respective ratings
-      await User.findByIdAndUpdate(
-        challenger._id,
-        { 
-          $push: { 
-            multiplayerResults: {
-              ...matchResult,
-              rating: challenger.rating
+
+      // Only update the calling user's results
+      if (callingUser.id === challenger.id) {
+        console.log('Updating challenger results');
+        await User.findByIdAndUpdate(
+          challenger._id,
+          { 
+            $push: { 
+              multiplayerResults: {
+                ...matchResult,
+                elo: challengerElo
+              }
             }
           }
-        }
-      );
-  
-      await User.findByIdAndUpdate(
-        challenged._id,
-        { 
-          $push: { 
-            multiplayerResults: {
-              ...matchResult,
-              rating: challenged.rating
+        );
+      } else if (callingUser.id === challenged.id) {
+        console.log('Updating challenged results');
+        await User.findByIdAndUpdate(
+          challenged._id,
+          { 
+            $push: { 
+              multiplayerResults: {
+                ...matchResult,
+                elo: challengedElo
+              }
             }
           }
-        }
-      );
-  
-      // Update match status
-      match.status = 'completed';
-      await match.save();
+        );
+      }
+
+      // Update match status after results are saved
+      if (match.status !== 'completed') {
+        match.status = 'completed';
+        await match.save();
+      }
   
       res.json({ 
         message: 'match completed',

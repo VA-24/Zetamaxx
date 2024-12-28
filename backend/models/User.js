@@ -25,7 +25,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 1000
   },
-  gamesPlayed: {
+  singleplayerGamesPlayed: {
+    type: Number,
+    default: 0
+  },
+  multiplayerGamesPlayed: {
     type: Number,
     default: 0
   },
@@ -54,6 +58,9 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
     
     const winner = await this.findById(winnerId);
     const loser = await this.findById(loserId);
+
+    winner.multiplayerGamesPlayed = winner.multiplayerGamesPlayed + 1;
+    loser.multiplayerGamesPlayed = winner.multiplayerGamesPlayed + 1;
     
     if (!winner || !loser) {
       throw new Error('User not found');
@@ -74,10 +81,10 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
   };
 
   userSchema.methods.updateAverageScore = async function(newScore) {
-    this.gamesPlayed += 1;
+    this.singleplayerGamesPlayed += 1;
     
     const totalOldScore = this.averageScore * (this.gamesPlayed - 1);
-    this.averageScore = Math.round((totalOldScore + newScore) / this.gamesPlayed);
+    this.averageScore = Math.round((totalOldScore + newScore) / this.singleplayerGamesPlayed);
     
     await this.save();
     return this;
@@ -85,8 +92,8 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
 
 
   userSchema.statics.getLeaderboard = async function() {
-    return await this.find({ gamesPlayed: { $gt: 0 } })
-      .select('username elo averageScore gamesPlayed')
+    return await this.find({ multiplayerGamesPlayed: { $gt: 0 } })
+      .select('username elo averageScore multiplayerGamesPlayed')
       .sort({ elo: -1 })
   };
 

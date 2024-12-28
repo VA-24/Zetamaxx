@@ -98,9 +98,6 @@ export default function Profile() {
                       <span className="font-semibold">
                         {match.players.challenger} vs {match.players.challenged}
                       </span>
-                      <span className="text-sm text-gray-500">
-                        Rating: {match.rating}
-                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span>

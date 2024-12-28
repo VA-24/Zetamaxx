@@ -126,7 +126,7 @@ export default function Game({ params }) {
 
   //set opponent score
   useEffect(() => {
-    if (gameStatus !== 'playing' || isMatchEnded) return;
+    if (gameStatus !== 'playing') return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -145,7 +145,6 @@ export default function Game({ params }) {
         
         if (match.status === 'completed') {
           setIsMatchEnded(true);
-          endGame();
         }
       } catch (error) {
         console.error('Error polling match:', error);
@@ -186,7 +185,7 @@ export default function Game({ params }) {
 
   //complete game
   const endGame = async () => {
-    if (gameStatus !== 'playing') return;
+    if (gameStatus !== 'playing' || isMatchEnded) return;
     setGameStatus('completed');
     setIsMatchEnded(true);
 

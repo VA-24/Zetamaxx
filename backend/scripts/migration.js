@@ -9,22 +9,21 @@ async function migrateUsers() {
     await mongoose.connect("mongodb+srv://vardhan:JjcfXCEu26tpPWXm@zetamaxx.k17ml.mongodb.net/?retryWrites=true&w=majority&appName=Zetamaxx");
     console.log('Connected to MongoDB');
     
-    // const result = await User.updateMany(
-    //   {}, 
-    //   { 
-    //     $set: { 
+    const result = await User.updateMany(
+      {}, 
+      { 
+        $set: { 
 
-    //       multiplayerResults: [],
-    //       singleplayerResults: [],
-    //       gamesPlayed: 0,
-    //       averageScore: 0,
-    //       elo: 1000
-    //     } 
-    //   },
-    //   { upsert: false }
-    // );
+          multiplayerGamesPlayed: 0,
+          multiplayerResults: [],
+          singleplayerGamesPlayed: 0,
+          elo: 1000
+        } 
+      },
+      { upsert: false }
+    );
 
-    const result = await Match.deleteMany({ duration: 120 });
+    // const result = await Match.deleteMany({ duration: 120 });
 
     console.log(`Migration completed. Modified ${result.modifiedCount} documents`);
     process.exit(0);
