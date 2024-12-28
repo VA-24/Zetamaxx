@@ -11,9 +11,5 @@
         "src": "/api/(.*)",
         "dest": "index.js"
       }
-    ],
-    "env": {
-      "MONGODB_URI": "@MONGODB_URI",
-      "JWT_SECRET": "@JWT_SECRET"
-    }
+    ]
   }
