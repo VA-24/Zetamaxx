@@ -58,7 +58,7 @@ router.get('/search', auth, async (req, res) => {
         challenger: user._id,
         challenged: opponent._id,
         duration: 120,
-        startTime: new Date(),
+        startTime: new Date(Date.now() + 1250),
         status: 'waiting',
         seed: Math.floor(Math.random() * 1000000)
       });

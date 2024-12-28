@@ -84,7 +84,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/leaderboard', async (req, res) => {
   try {
-    const leaderboard = await User.getLeaderboard(10);
+    const leaderboard = await User.getLeaderboard();
     res.json(leaderboard);
   } catch (err) {
     console.error(err);

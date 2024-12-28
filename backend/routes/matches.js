@@ -224,7 +224,7 @@ router.post('/:id/join', auth, async (req, res) => {
     }
 
     if (match.challenger && match.challenged) {
-      return res.status(403).json({ message: 'Game is full' });
+      return res.status(409).json({ message: 'Game is full' });
     }
 
 

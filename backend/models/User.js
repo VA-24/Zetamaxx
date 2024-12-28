@@ -84,11 +84,10 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
   };
 
 
-  userSchema.statics.getLeaderboard = async function(limit = 50) {
+  userSchema.statics.getLeaderboard = async function() {
     return await this.find({ gamesPlayed: { $gt: 0 } })
       .select('username elo averageScore gamesPlayed')
       .sort({ elo: -1 })
-      .limit(limit);
   };
 
 module.exports = mongoose.model('User', userSchema);

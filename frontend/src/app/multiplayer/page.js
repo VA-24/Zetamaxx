@@ -7,6 +7,30 @@ export default function MultiPlayer() {
   const router = useRouter();
   const [generatedLink, setGeneratedLink] = useState('');
   const [isMatchmaking, setIsMatchmaking] = useState(false);
+  const [leaderboardUsers, setLeaderboardUsers] = useState([]);
+
+  useEffect(() => {
+    console.log('useeffect')
+  }, []);
+
+  // Add leaderboard fetch on mount
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch('/api/auth/leaderboard');
+        if (!response.ok) {
+          throw new Error('Failed to fetch leaderboard');
+        }
+        const data = await response.json();
+        console.log(data);
+        setLeaderboardUsers(data);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
 
   // Add matchmaking polling
   useEffect(() => {
@@ -167,6 +191,39 @@ export default function MultiPlayer() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="mt-8 w-full max-w-lg mx-auto">
+          <div className="bg-white overflow-hidden">
+            <table className="min-w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Games</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Array.isArray(leaderboardUsers) && leaderboardUsers.map((user, index) => (
+                  <tr key={user._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {user.username}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.elo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.gamesPlayed}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
