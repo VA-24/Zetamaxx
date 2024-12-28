@@ -26,7 +26,7 @@ const matchSchema = new mongoose.Schema({
   },
   duration: {
     type: Number,
-    enum: [30, 60, 120],
+    enum: [10, 60, 120],
     required: true
   },
   status: {

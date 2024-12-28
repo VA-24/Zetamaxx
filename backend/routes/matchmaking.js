@@ -29,7 +29,7 @@ router.get('/search', auth, async (req, res) => {
         { challenger: user._id },
         { challenged: user._id }
       ],
-      status: 'waiting'
+      status: 'in_progress' // changed from waiting
     }).sort({ createdAt: -1 });
 
     if (existingMatch) {
@@ -59,7 +59,7 @@ router.get('/search', auth, async (req, res) => {
         challenged: opponent._id,
         duration: 120,
         startTime: new Date(Date.now() + 1250),
-        status: 'waiting',
+        status: 'in_progress',
         seed: Math.floor(Math.random() * 1000000)
       });
 

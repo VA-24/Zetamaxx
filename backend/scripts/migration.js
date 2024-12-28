@@ -15,13 +15,16 @@ async function migrateUsers() {
     //     $set: { 
 
     //       multiplayerResults: [],
+    //       singleplayerResults: [],
+    //       gamesPlayed: 0,
+    //       averageScore: 0,
     //       elo: 1000
     //     } 
     //   },
     //   { upsert: false }
     // );
 
-    const result = await Match.deleteMany({ status: 'waiting' });
+    const result = await Match.deleteMany({ duration: 120 });
 
     console.log(`Migration completed. Modified ${result.modifiedCount} documents`);
     process.exit(0);
