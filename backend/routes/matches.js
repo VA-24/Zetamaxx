@@ -12,6 +12,7 @@ router.post('/create', auth, async (req, res) => {
       _id: matchId,
       duration: duration,
       status: status || 'waiting',
+      type: 'vsFriend',
       seed: seed || Math.floor(Math.random() * 1000000)
     });
 
@@ -132,9 +133,6 @@ router.get('/history', auth, async (req, res) => {
       const challenger = await User.findById(match.challenger);
       const challenged = await User.findById(match.challenged);
       
-      // Update average scores
-      await challenger.updateAverageScore(match.challengerScore);
-      await challenged.updateAverageScore(match.challengedScore);
   
       // Create match result objects for both players
       const matchResult = {
@@ -223,7 +221,7 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
 
-    if (match.challenger && match.challenged) {
+    if (match.challenger && match.challenged && match.type === 'vsFriend') {
       return res.status(409).json({ message: 'Game is full' });
     }
 

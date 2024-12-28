@@ -77,10 +77,10 @@ export default function Game({ params }) {
           }
         });
 
-        // if (response.status === 409) {
-        //   setIsGameFull(true);
-        //   return;
-        // }
+        if (response.status === 409) {
+          setIsGameFull(true);
+          return;
+        }
         
         if (!response.ok) {
           throw new Error('Failed to join match');

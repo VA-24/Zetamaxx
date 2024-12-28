@@ -84,6 +84,7 @@ export default function MultiPlayer() {
           matchId: gameId,
           duration: 120,
           status: 'waiting',
+          type: 'vsFriend',
           seed: Math.floor(Math.random() * 1000000),
           challenger: null,
           challenged: null

@@ -44,6 +44,11 @@ const matchSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  type: {
+    type: String,
+    enum: ['vsFriend', 'vsRandom'],
+    required: true
+  },
   startTime: Date,
   endTime: Date,
   seed: {
