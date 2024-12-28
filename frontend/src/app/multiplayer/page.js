@@ -9,11 +9,7 @@ export default function MultiPlayer() {
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [leaderboardUsers, setLeaderboardUsers] = useState([]);
 
-  useEffect(() => {
-    console.log('useeffect')
-  }, []);
 
-  // Add leaderboard fetch on mount
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
@@ -22,7 +18,6 @@ export default function MultiPlayer() {
           throw new Error('Failed to fetch leaderboard');
         }
         const data = await response.json();
-        console.log(data);
         setLeaderboardUsers(data);
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
@@ -32,7 +27,7 @@ export default function MultiPlayer() {
     fetchLeaderboard();
   }, []);
 
-  // Add matchmaking polling
+  // matchmaking polling
   useEffect(() => {
     let pollInterval;
     if (isMatchmaking) {
@@ -62,7 +57,7 @@ export default function MultiPlayer() {
     };
   }, [isMatchmaking, router]);
 
-  // Add cleanup on unmount
+  // cleanup on unmount
   useEffect(() => {
     return () => {
       if (isMatchmaking) {
