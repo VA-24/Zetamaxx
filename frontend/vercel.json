@@ -9,7 +9,7 @@
     "rewrites": [
       {
         "source": "/api/:path*",
-        "destination": "https://your-backend-url.vercel.app/api/:path*"
+        "destination": "https://zetamaxx-server.vercel.app/api/:path*"
       }
     ]
   }
