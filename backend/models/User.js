@@ -83,7 +83,7 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
   userSchema.methods.updateAverageScore = async function(newScore) {
     this.singleplayerGamesPlayed += 1;
     
-    const totalOldScore = this.averageScore * (this.gamesPlayed - 1);
+    const totalOldScore = this.averageScore * (this.singleplayerGamesPlayed - 1);
     this.averageScore = Math.round((totalOldScore + newScore) / this.singleplayerGamesPlayed);
     
     await this.save();
