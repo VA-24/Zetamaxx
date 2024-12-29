@@ -164,7 +164,7 @@ export default function Game({ params }) {
             <h2 className="text-4xl mb-2">Score: {score}</h2>
             <p 
               className="text-blue-800 underline cursor-pointer text-sm"
-              onClick={() => router.push('/singleplayer')}
+              onClick={() => router.push('/')}
             >
               Try again?
             </p>
