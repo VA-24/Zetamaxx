@@ -232,6 +232,8 @@ router.get('/available-players', auth, async (req, res) => {
 
 router.post('/:id/join', auth, async (req, res) => {
   try {
+
+    
     const match = await Match.findById(req.params.id);
 
     if (!match) {
@@ -243,20 +245,16 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(409).json({ message: 'Game is full' });
     }
 
-    // If joining user is the challenger (match creator)
-    if (match.challenger.toString() === req.user.id) {
-      // Just return the match without changes
-      return res.json(match);
-    }
 
-    // If joining user is not the challenger, set them as challenged
-    if (!match.challenged && match.challenger.toString() !== req.user.id) {
+    if (!match.challenger) {
+      match.challenger = req.user.id;
+    } else if (!match.challenged && match.challenger.toString() !== req.user.id) {
       match.challenged = req.user.id;
       match.status = 'ready';
       match.startTime = new Date();
-      await match.save();
     }
 
+    await match.save();
     const updatedMatch = await Match.findById(req.params.id);
     res.json(updatedMatch);
   } catch (err) {
