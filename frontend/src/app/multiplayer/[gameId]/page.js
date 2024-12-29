@@ -145,6 +145,15 @@ export default function Game({ params }) {
         
         if (match.status === 'completed') {
           setIsMatchEnded(true);
+          const playerScore = isChallenger ? match.challengerScore : match.challengedScore;
+          const opponentFinalScore = isChallenger ? match.challengedScore : match.challengerScore;
+          
+          setGameResult({
+            won: playerScore > opponentFinalScore,
+            isDraw: playerScore === opponentFinalScore,
+            playerScore,
+            opponentFinalScore
+          });
         }
       } catch (error) {
         console.error('Error polling match:', error);
@@ -295,7 +304,7 @@ export default function Game({ params }) {
       )}
       
       
-      {(gameStatus === 'completed' || isMatchEnded) && gameResult && (
+      {(gameStatus === 'completed' || isMatchEnded) && (
         <div className="w-full bg-gray-200 py-4 mt-52 justify-center">
         <div className="text-center">
 

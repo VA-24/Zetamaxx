@@ -20,9 +20,19 @@ async function migrateUsers() {
     //   { upsert: false }
     // );
 
-    const result = await Match.deleteMany({ status: 'waiting' });
+    const users = await User.find({});
+    
+    for (const user of users) {
+      const gamesPlayed = user.multiplayerResults ? user.multiplayerResults.length : 0;
+      await User.findByIdAndUpdate(user._id, {
+        $set: { multiplayerGamesPlayed: gamesPlayed }
+      });
+      console.log(`Updated user ${user.username}: ${gamesPlayed} games played`);
+    }
 
-    console.log(`Migration completed. Modified ${result.modifiedCount} documents`);
+    // const result = await Match.deleteMany({ status: 'waiting' });
+
+    console.log(`Migration completed`);
     process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);

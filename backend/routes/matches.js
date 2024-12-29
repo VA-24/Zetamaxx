@@ -117,6 +117,9 @@ router.get('/history', auth, async (req, res) => {
       let winnerId, loserId;
       
       if (!isDraw) {
+
+
+
         winnerId = match.challengerScore > match.challengedScore ? 
           match.challenger : match.challenged;
         loserId = match.challengerScore > match.challengedScore ? 
@@ -138,6 +141,11 @@ router.get('/history', auth, async (req, res) => {
 
       // Only update ELO ratings once when the first player completes
       if (match.status !== 'completed') {
+        await User.updateMany(
+          { _id: { $in: [match.challenger, match.challenged] }},
+          { $inc: { multiplayerGamesPlayed: 1 }}
+        );
+        
         if (isDraw) {
           await User.updateEloRatings(match.challenger, match.challenged, true);
         } else {
