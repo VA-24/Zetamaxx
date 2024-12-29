@@ -84,8 +84,17 @@ router.post('/login', async (req, res) => {
 
 router.get('/leaderboard', async (req, res) => {
   try {
-    const leaderboard = await User.getLeaderboard();
-    res.json(leaderboard);
+    const users = await User.getLeaderboard();
+    
+    const formattedLeaderboard = users.map(user => ({
+      _id: user._id,
+      username: user.username,
+      elo: user.elo,
+      multiplayerGamesPlayed: user.multiplayerResults.length,
+      averageScore: user.averageScore
+    }));
+
+    res.json(formattedLeaderboard);
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');

@@ -92,9 +92,11 @@ userSchema.statics.updateEloRatings = async function(winnerId, loserId, isDraw =
 
 
   userSchema.statics.getLeaderboard = async function() {
-    return await this.find({ multiplayerGamesPlayed: { $gt: 0 } })
-      .select('username elo averageScore multiplayerGamesPlayed')
-      .sort({ elo: -1 })
+    return await this.find({
+      'multiplayerResults.0': { $exists: true }
+    })
+      .select('username elo averageScore multiplayerResults')
+      .sort({ elo: -1 });
   };
 
 module.exports = mongoose.model('User', userSchema);
