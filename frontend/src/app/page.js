@@ -53,6 +53,7 @@ export default function Home() {
             Profile
           </button>
         </div>
+        <h1 className='text text-sm mt-8'>Please sign in/register before you get started. Note that you will be logged out from inactivity after a week.</h1>
         <h1 className='text text-sm mt-8'>Questions/bugs? Email va648314@gmail.com.</h1>
       </div>
     </main>
