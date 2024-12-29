@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Profile() {
   const router = useRouter();
@@ -45,9 +46,11 @@ export default function Profile() {
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2 text-center">
-          {userData?.username}'s Profile
+          {userData?.username}&apos;s Profile
         </h1>
-        <p className="text-sm mb-8 text-center"><a href='/'>Home</a></p>
+        <p className="text-sm mb-8 text-center">
+          <Link href="/">Home</Link>
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Singleplayer Section */}

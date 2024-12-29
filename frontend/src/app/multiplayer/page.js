@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
+import Link from 'next/link';
 
 export default function MultiPlayer() {
   const router = useRouter();
@@ -129,7 +130,9 @@ export default function MultiPlayer() {
         <h1 className="text-3xl font-bold mb-2 text-center">
           Multiplayer
         </h1>
-        <p className="text-sm mb-8 text-center"><a href='/'>Home</a></p>
+        <p className="text-sm mb-8 text-center">
+          <Link href="/">Home</Link>
+        </p>
         
         <div className="flex flex-row justify-center gap-8">
           <div className="flex flex-col items-center">

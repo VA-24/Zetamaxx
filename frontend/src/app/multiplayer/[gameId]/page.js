@@ -272,7 +272,7 @@ export default function Game({ params }) {
             <p className="text-xl">Seconds left: {timeLeft}</p>
             <div className="flex flex-col gap-3">
               <h2 className="text-xl font-bold">Your score: {score}</h2>
-              <h2 className="text-xl">Opponent's score: {opponentScore}</h2>
+              <h2 className="text-xl">Opponent&apos;s score: {opponentScore}</h2>
             </div>
           </div>
 
