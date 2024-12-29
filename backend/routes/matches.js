@@ -10,7 +10,6 @@ router.post('/create', auth, async (req, res) => {
 
     const match = new Match({
       _id: matchId,
-      challenger: req.user.id,
       duration: 120,
       status: status || 'waiting',
       type: 'vsFriend',
