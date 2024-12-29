@@ -10,10 +10,11 @@ router.post('/create', auth, async (req, res) => {
 
     const match = new Match({
       _id: matchId,
-      duration: 10,
+      duration: 120,
       status: status || 'waiting',
       type: 'vsFriend',
-      seed: seed || Math.floor(Math.random() * 1000000)
+      seed: seed || Math.floor(Math.random() * 1000000),
+      challenger: req.user.id
     });
 
     const savedMatch = await match.save();
