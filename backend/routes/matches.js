@@ -14,7 +14,6 @@ router.post('/create', auth, async (req, res) => {
       status: status || 'waiting',
       type: 'vsFriend',
       seed: seed || Math.floor(Math.random() * 1000000),
-      challenger: req.user.id
     });
 
     const savedMatch = await match.save();
