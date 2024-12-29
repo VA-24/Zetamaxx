@@ -245,10 +245,14 @@ router.post('/:id/join', auth, async (req, res) => {
       return res.status(409).json({ message: 'Game is full' });
     }
 
+    // Convert both IDs to strings for consistent comparison across platforms
+    const challengerId = match.challenger ? String(match.challenger) : null;
+    const joiningUserId = String(req.user.id);
+
 
     if (!match.challenger) {
       match.challenger = req.user.id;
-    } else if (!match.challenged && match.challenger.toString() !== req.user.id) {
+    } else if (!match.challenged && challengerId !== joiningUserId) {
       match.challenged = req.user.id;
       match.status = 'ready';
       match.startTime = new Date();
