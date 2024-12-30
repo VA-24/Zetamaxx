@@ -94,14 +94,14 @@ export default function MultiPlayer() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create match');
+        throw new Error(errorData.message || 'You must log in before accessing multiplayer and the profile page');
       }
       
       const link = `${window.location.origin}/multiplayer/${gameId}`;
       setGeneratedLink(link);
     } catch (error) {
       console.error('Error creating match:', error);
-      alert('Failed to create match: ' + error.message);
+      alert('You must log in before accessing multiplayer and the profile page;  ' + error.message);
     }
   };
 

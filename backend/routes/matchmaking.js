@@ -116,4 +116,14 @@ router.post('/cancel', auth, async (req, res) => {
   }
 });
 
+router.get('/queue-count', async (req, res) => {
+  try {
+    const queueCount = await User.countDocuments({ lookingForMatch: true });
+    res.json({ count: queueCount });
+  } catch (err) {
+    console.error('Error getting queue count:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
