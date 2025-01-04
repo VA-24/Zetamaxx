@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
+import { Analytics } from "@vercel/analytics/react"
 
 export default function Home() {
   const router = useRouter();

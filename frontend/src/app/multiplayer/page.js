@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
+import { Analytics } from "@vercel/analytics/react"
 import Link from 'next/link';
 
 export default function MultiPlayer() {
