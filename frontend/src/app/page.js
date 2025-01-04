@@ -56,6 +56,7 @@ export default function Home() {
         </div>
         <h1 className='text text-sm mt-8'>Please sign in/register before you get started. Note that you will be logged out from inactivity after a week.</h1>
       </div>
+      <Analytics />
     </main>
   );
 }
