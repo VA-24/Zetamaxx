@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { getSocket } from '../../../lib/socket';
 
 export default function Game() {
   const router = useRouter();
   const { gameId } = useParams();
+  // Set by the lobby's Copy button: the invite link is on the clipboard.
+  const linkCopied = useSearchParams().has('copied');
   const [problems, setProblems] = useState([]);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -108,6 +110,9 @@ export default function Game() {
       {gameStatus === 'waiting' && (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h2 className="text-2xl font-bold mb-4">Waiting for opponent...</h2>
+          {linkCopied && (
+            <p className="text-sm">Link copied to clipboard. Send it to a friend to start the game.</p>
+          )}
         </div>
       )}
 

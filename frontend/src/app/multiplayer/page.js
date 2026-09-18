@@ -8,6 +8,7 @@ import { getSocket } from '../../lib/socket';
 export default function MultiPlayer() {
   const router = useRouter();
   const [generatedLink, setGeneratedLink] = useState('');
+  const [generatedMatchId, setGeneratedMatchId] = useState('');
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [leaderboardUsers, setLeaderboardUsers] = useState([]);
 
@@ -54,10 +55,23 @@ export default function MultiPlayer() {
     try {
       const { matchId } = await getSocket().request({ type: 'create_room' });
       const link = `${window.location.origin}/multiplayer/${matchId}`;
+      setGeneratedMatchId(matchId);
       setGeneratedLink(link);
     } catch (error) {
       console.error('Error creating match:', error);
       alert('You must log in before accessing multiplayer and the profile page;  ' + error.message);
+    }
+  };
+
+  // Copy the link, then take our seat in the room; the waiting screen tells
+  // us the link is on the clipboard. If copying fails we stay here with the
+  // link still visible.
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedLink);
+      router.push(`/multiplayer/${generatedMatchId}?copied=1`);
+    } catch (error) {
+      console.error('Error copying link:', error);
     }
   };
 
@@ -94,7 +108,7 @@ export default function MultiPlayer() {
                     className="w-full p-2 border rounded"
                   />
                   <button
-                    onClick={() => navigator.clipboard.writeText(generatedLink)}
+                    onClick={copyLink}
                     className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                   >
                     Copy
