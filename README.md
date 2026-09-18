@@ -93,19 +93,20 @@ No configuration needed: the production backend URLs are the in-code defaults
 (`next.config.mjs` for the `/api` rewrite, `src/lib/socket.js` for the
 WebSocket). `BACKEND_URL` / `NEXT_PUBLIC_WS_URL` exist only as overrides.
 
-The frontend Vercel project is not linked to GitHub, so deploy it manually
-(`vercel --prod` from `frontend/`, or connect the repo in the Vercel dashboard
-with Root Directory `frontend`).
+The Vercel project (`zetamaxx`, Root Directory `frontend`) auto-deploys from
+`master`. `frontend/vercel.json` pins the framework preset to Next.js; without
+it the project-level preset ("Other") publishes `public/` as a static site.
+Vercel refuses to build Next.js versions with known critical CVEs, so keep
+`next` on a maintained release.
 
-### Cutover order
+### Cutover status
 
-1. ~~Deploy the backend on Render~~ — done; `https://zetamaxx-server.onrender.com/api` returns `{"message":"serve online"}`.
-2. Redeploy the frontend.
-3. Delete the old `zetamaxx-server` Vercel project. Until step 2 happens it
-   must stay: it auto-deploys from `master` and `backend/vercel.json` turns it
-   into a proxy that forwards `/api/*` to Render, which is what keeps the
-   currently deployed frontend's login/profile/leaderboard/singleplayer
-   working. (Its multiplayer needs the new frontend.)
+1. ~~Deploy the backend on Render~~ — done.
+2. ~~Redeploy the frontend~~ — done; https://zetamaxx.vercel.app talks to Render.
+3. Delete the old `zetamaxx-server` Vercel project and `backend/vercel.json`.
+   That project also auto-deploys from `master`; the file turns it into a
+   proxy to Render so its URL kept working during the switch. Nothing uses it
+   now.
 
 Because `JWT_SECRET` was rotated, everyone logs in again once the frontend
 switches over (tokens were 7-day anyway). The Atlas password is also in git
