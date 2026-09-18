@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Analytics } from "@vercel/analytics/react"
 import { getSession } from '../lib/session';
@@ -17,7 +16,7 @@ export default function Home() {
   }, []);
 
   const startSinglePlayer = () => {
-    const gameId = uuidv4();
+    const gameId = crypto.randomUUID();
     router.push(`/singleplayer/${gameId}`);
   };
 

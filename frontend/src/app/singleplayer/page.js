@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function SinglePlayer() {
   const router = useRouter();
@@ -9,7 +8,7 @@ export default function SinglePlayer() {
 
   // Singleplayer runs entirely in the browser; the result is posted when it ends.
   const startGame = () => {
-    router.push(`/singleplayer/${uuidv4()}`);
+    router.push(`/singleplayer/${crypto.randomUUID()}`);
   };
 
   return (
