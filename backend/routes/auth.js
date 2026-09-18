@@ -7,7 +7,7 @@ const { sign } = require('../lib/token');
 const router = express.Router();
 
 function loginResponse(user) {
-  return { token: sign(user._id), userId: user._id, message: 'Login successful' };
+  return { token: sign(user), userId: user._id, message: 'Login successful' };
 }
 
 router.post('/register', async (req, res) => {
@@ -32,7 +32,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ username }, 'password').lean();
+    const user = await User.findOne({ username }, 'username password').lean();
     if (!user || !(await bcrypt.compare(password ?? '', user.password))) {
       return res.status(400).json({ message: 'invalid credentials' });
     }

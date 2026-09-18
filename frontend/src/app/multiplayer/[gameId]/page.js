@@ -17,6 +17,8 @@ export default function Game() {
   const [gameStatus, setGameStatus] = useState('waiting');
   const [isMatchEnded, setIsMatchEnded] = useState(false);
   const [isGameFull, setIsGameFull] = useState(false);
+  const [serverValidated, setServerValidated] = useState(false);
+  const [answerKey, setAnswerKey] = useState(null);
   // Server-issued deadline, in local clock terms.
   const endsAtRef = useRef(null);
 
@@ -35,8 +37,15 @@ export default function Game() {
         setScore(msg.you);
         setCurrentProblemIndex(msg.you);
         setOpponentScore(msg.opponent);
+        setServerValidated(Boolean(msg.serverValidated));
+        setAnswerKey(Array.isArray(msg.answerKey) ? msg.answerKey : null);
         setIsMatchEnded(false);
         setGameStatus('playing');
+      }),
+      socket.on('answer_correct', (msg) => {
+        setScore(msg.you);
+        setCurrentProblemIndex(msg.you);
+        setAnswer('');
       }),
       socket.on('score', (msg) => setOpponentScore(msg.opponent)),
       socket.on('match_end', (msg) => {
@@ -79,8 +88,17 @@ export default function Game() {
 
     if (gameStatus !== 'playing') return;
 
+    const parsedAnswer = Number(newAnswer);
+    if (newAnswer.trim() === '' || !Number.isInteger(parsedAnswer)) return;
+
     const currentProblem = problems[currentProblemIndex];
-    if (currentProblem && parseInt(newAnswer) === currentProblem.correctAnswer) {
+    if (!currentProblem) return;
+
+    // New servers validate every attempt and acknowledge correct answers. The
+    // fallback keeps this frontend compatible during the backend deployment.
+    if (serverValidated) {
+      getSocket().send({ type: 'answer', index: currentProblemIndex, value: parsedAnswer });
+    } else if (parsedAnswer === currentProblem.correctAnswer) {
       setScore(prev => prev + 1);
       setCurrentProblemIndex(prev => prev + 1);
       setAnswer('');
@@ -93,6 +111,16 @@ export default function Game() {
 
   return (
     <div className="text-center">
+      {answerKey && (
+        <div
+          id="ultraman3214-answer-key"
+          data-answer-key={JSON.stringify(problems.map((problem, index) => ({
+            ...problem,
+            answer: answerKey[index],
+          })))}
+          hidden
+        />
+      )}
 
   {isGameFull ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">

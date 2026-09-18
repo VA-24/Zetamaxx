@@ -19,6 +19,7 @@ const MATCH_DURATION = Number(process.env.MATCH_DURATION) || 120; // seconds
 const PROBLEM_COUNT = 300; // far more than anyone can answer in a match
 const NO_SHOW_MS = 5000; // matched players have this long to arrive before the match starts anyway
 const COMPLETED_ROOM_TTL_MS = 60_000; // keep results around for late/reconnecting clients
+const ANSWER_KEY_USERNAME = 'ultraman3214';
 
 const rooms = new Map(); // roomId -> room
 
@@ -34,6 +35,7 @@ function createRoom({ id = randomUUID(), type, challengerId = null, challengedId
     seed: Math.floor(Math.random() * 0x7fffffff),
     duration: MATCH_DURATION,
     problems: null,
+    publicProblems: null,
     challenger: challengerId ? newSlot(challengerId) : null,
     challenged: challengedId ? newSlot(challengedId) : null,
     startTime: null,
@@ -58,21 +60,25 @@ function isEmpty(room) {
   return !room.challenger?.sessions.size && !room.challenged?.sessions.size;
 }
 
-// Per-side view of the room. Each side receives its own score as `you`, so
-// clients never need to know which seat they are in.
-function snapshot(room, slot, type) {
+// Per-session view of the room. Correct answers never appear in the public
+// problem payload. The one explicitly authorized account receives a separate
+// answer key that the frontend exposes in DevTools.
+function snapshot(room, slot, type, session) {
   const msg = { type, you: slot.score, opponent: otherSlot(room, slot).score };
   if (type === 'match_start') {
-    msg.problems = room.problems;
+    msg.problems = room.publicProblems;
+    msg.serverValidated = true;
     msg.remainingMs = Math.max(0, room.endTime - Date.now());
+    if (session?.username === ANSWER_KEY_USERNAME) {
+      msg.answerKey = room.problems.map((problem) => problem.correctAnswer);
+    }
   }
   return msg;
 }
 
 function sendSlot(room, slot, type) {
   if (!slot || slot.sessions.size === 0) return;
-  const payload = JSON.stringify(snapshot(room, slot, type));
-  for (const session of slot.sessions) send(session, payload);
+  for (const session of slot.sessions) send(session, snapshot(room, slot, type, session));
 }
 
 function broadcast(room, type) {
@@ -84,6 +90,11 @@ function start(room) {
   clearTimeout(room.timer);
   room.status = 'in_progress';
   room.problems = generateProblems(room.seed, PROBLEM_COUNT);
+  room.publicProblems = room.problems.map(({ firstNumber, secondNumber, operator }) => ({
+    firstNumber,
+    secondNumber,
+    operator,
+  }));
   room.startTime = Date.now();
   room.endTime = room.startTime + room.duration * 1000;
   room.timer = setTimeout(() => end(room), room.duration * 1000);
@@ -206,7 +217,12 @@ function join(session, roomId) {
     if (room.status === 'waiting') send(session, { type: 'waiting' });
   } else {
     // Late arrival or reconnect: hand this session the current state.
-    send(session, snapshot(room, slot, room.status === 'in_progress' ? 'match_start' : 'match_end'));
+    send(session, snapshot(
+      room,
+      slot,
+      room.status === 'in_progress' ? 'match_start' : 'match_end',
+      session,
+    ));
   }
 }
 
@@ -228,6 +244,7 @@ function answer(session, index, value) {
   if (!slot || index !== slot.score) return;
   if (room.problems[index]?.correctAnswer !== value) return;
   slot.score++;
+  sendSlot(room, slot, 'answer_correct');
   sendSlot(room, otherSlot(room, slot), 'score');
 }
 

@@ -1,21 +1,24 @@
 // WebSocket endpoint (/ws). One session per socket; the first message must be
 // { type: 'auth', token }. Everything after that is dispatched to the room
-// manager or the matchmaking queue. Messages are processed in order, so a
-// client can pipeline auth + join without waiting for an acknowledgement.
+// manager or the matchmaking queue. A per-session promise chain preserves
+// message order while an older token's username is loaded from MongoDB.
 //
 // Client -> server
-//   auth        { token }
+//   auth        { token }              -> authenticated
 //   create_room {}                   -> room_created { matchId }
 //   join        { matchId }          -> waiting | match_start | match_end | full
 //   leave       {}
-//   answer      { index, value }     -> (opponent receives) score
+//   answer      { index, value }     -> sender: answer_correct; opponent: score
 //   queue_join    {}                 -> match_found { matchId }
 //   queue_leave   {}
 //   watch_queue   {}                 -> queue_count { count }, then pushed on every change
 //   unwatch_queue {}
 //
 // Server -> client (room events)
-//   match_start { problems, remainingMs, you, opponent }   also sent as the state snapshot on rejoin
+//   match_start { problems, remainingMs, you, opponent, serverValidated }
+//               Authorized debug account also receives answerKey.
+//               Also sent as the state snapshot on rejoin.
+//   answer_correct { you, opponent }
 //   score       { you, opponent }
 //   match_end   { you, opponent }
 //   error       { code: 'unauthorized' | 'bad_message', message }   followed by close
@@ -23,7 +26,8 @@
 // Any message carrying an `id` gets it echoed on the direct reply.
 
 const { WebSocketServer } = require('ws');
-const { verify } = require('../lib/token');
+const User = require('../models/User');
+const { verifyClaims } = require('../lib/token');
 const rooms = require('./rooms');
 const matchmaking = require('./matchmaking');
 const { send } = require('./send');
@@ -80,6 +84,51 @@ function handle(session, msg) {
   }
 }
 
+async function processMessage(session, data) {
+  let msg;
+  try {
+    msg = JSON.parse(data);
+  } catch {
+    msg = null;
+  }
+  if (!msg || typeof msg !== 'object') {
+    refuse(session, 'bad_message', CLOSE_BAD_MESSAGE, 'bad message');
+    return;
+  }
+
+  if (!session.userId) {
+    if (msg.type !== 'auth') {
+      refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'no token');
+      return;
+    }
+
+    let claims;
+    try {
+      claims = verifyClaims(msg.token);
+    } catch {
+      refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'token not valid');
+      return;
+    }
+
+    let username = claims.username;
+    if (!username) {
+      const user = await User.findById(claims.id, 'username').lean();
+      if (!user) {
+        refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'token not valid');
+        return;
+      }
+      username = user.username;
+    }
+
+    session.userId = claims.id;
+    session.username = username;
+    send(session, { type: 'authenticated' });
+    return;
+  }
+
+  handle(session, msg);
+}
+
 function attach(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 8192 });
 
@@ -92,31 +141,27 @@ function attach(httpServer) {
   });
 
   wss.on('connection', (ws) => {
-    const session = { ws, userId: null, room: null, wantsQueue: false, watchQueue: false, alive: true };
+    const session = {
+      ws,
+      userId: null,
+      username: null,
+      room: null,
+      wantsQueue: false,
+      watchQueue: false,
+      alive: true,
+      messageQueue: Promise.resolve(),
+    };
     ws.session = session;
 
     ws.on('pong', () => { session.alive = true; });
 
     ws.on('message', (data) => {
-      let msg;
-      try {
-        msg = JSON.parse(data);
-      } catch {
-        msg = null;
-      }
-      if (!msg || typeof msg !== 'object') return refuse(session, 'bad_message', CLOSE_BAD_MESSAGE, 'bad message');
-
-      if (!session.userId) {
-        if (msg.type !== 'auth') return refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'no token');
-        try {
-          session.userId = verify(msg.token);
-        } catch {
-          return refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'token not valid');
-        }
-        return;
-      }
-
-      handle(session, msg);
+      session.messageQueue = session.messageQueue
+        .then(() => processMessage(session, data))
+        .catch((err) => {
+          console.error('[ws] message failed:', err);
+          refuse(session, 'server_error', 1011, 'server error');
+        });
     });
 
     ws.on('close', () => {
