@@ -52,6 +52,14 @@ class GameSocket {
       } catch {
         return;
       }
+      // The server states auth failures in-band because some proxies don't
+      // forward custom close codes. Close from our side so we don't sit
+      // waiting on the proxy's timeout.
+      if (msg.type === 'error' && msg.code === 'unauthorized') {
+        this.fail(new Error(msg.message || 'token not valid'));
+        ws.close();
+        return;
+      }
       if (msg.id !== undefined) this.settle(msg.id, msg);
       this.emit(msg.type, msg);
     };
@@ -59,10 +67,10 @@ class GameSocket {
     ws.onclose = (event) => {
       if (this.ws !== ws) return;
       this.ws = null;
-      if (event.code === CLOSE_UNAUTHORIZED) {
-        this.fail(new Error(event.reason || 'token not valid'));
-        return;
-      }
+      if (event.code === CLOSE_UNAUTHORIZED) this.fail(new Error(event.reason || 'token not valid'));
+      // Auth failures are terminal until the next getSocket() retries with
+      // whatever token is stored then.
+      if (this.authError) return;
       this.rejectPending(new Error('connection closed'));
       // Only fight to get back if a page still wants the connection.
       if (this.openHandlers.size > 0) {

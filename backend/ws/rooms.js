@@ -199,9 +199,15 @@ function join(session, roomId) {
   slot.sessions.add(session);
   session.room = room;
 
-  maybeStart(room);
-  if (room.status === 'waiting') send(session, { type: 'waiting' });
-  else sendSlot(room, slot, room.status === 'in_progress' ? 'match_start' : 'match_end');
+  if (room.status === 'waiting') {
+    // If this arrival completes the pair, start() broadcasts match_start to
+    // everyone (including this session), so only ack when still waiting.
+    maybeStart(room);
+    if (room.status === 'waiting') send(session, { type: 'waiting' });
+  } else {
+    // Late arrival or reconnect: hand this session the current state.
+    send(session, snapshot(room, slot, room.status === 'in_progress' ? 'match_start' : 'match_end'));
+  }
 }
 
 function leave(session) {

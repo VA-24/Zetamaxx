@@ -16,6 +16,7 @@
 //   match_start { problems, remainingMs, you, opponent }   also sent as the state snapshot on rejoin
 //   score       { you, opponent }
 //   match_end   { you, opponent }
+//   error       { code: 'unauthorized' | 'bad_message', message }   followed by close
 //
 // Any message carrying an `id` gets it echoed on the direct reply.
 
@@ -33,6 +34,14 @@ const MAX_ROOM_ID_LENGTH = 64;
 function reply(session, req, res) {
   if (req.id !== undefined) res.id = req.id;
   send(session, res);
+}
+
+// Some proxies (Render's included) don't forward close frames with custom
+// codes, so state the reason in a normal message first; the close code is
+// kept for clients that do see it.
+function refuse(session, code, closeCode, message) {
+  send(session, { type: 'error', code, message });
+  session.ws.close(closeCode, message);
 }
 
 function handle(session, msg) {
@@ -76,16 +85,16 @@ function attach(httpServer) {
       try {
         msg = JSON.parse(data);
       } catch {
-        return ws.close(CLOSE_BAD_MESSAGE, 'bad message');
+        msg = null;
       }
-      if (!msg || typeof msg !== 'object') return ws.close(CLOSE_BAD_MESSAGE, 'bad message');
+      if (!msg || typeof msg !== 'object') return refuse(session, 'bad_message', CLOSE_BAD_MESSAGE, 'bad message');
 
       if (!session.userId) {
-        if (msg.type !== 'auth') return ws.close(CLOSE_UNAUTHORIZED, 'no token');
+        if (msg.type !== 'auth') return refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'no token');
         try {
           session.userId = verify(msg.token);
         } catch {
-          return ws.close(CLOSE_UNAUTHORIZED, 'token not valid');
+          return refuse(session, 'unauthorized', CLOSE_UNAUTHORIZED, 'token not valid');
         }
         return;
       }
