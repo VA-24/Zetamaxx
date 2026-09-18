@@ -11,6 +11,7 @@ export default function MultiPlayer() {
   const [generatedMatchId, setGeneratedMatchId] = useState('');
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [leaderboardUsers, setLeaderboardUsers] = useState([]);
+  const [queueCount, setQueueCount] = useState(null); // null until the server tells us
 
 
   useEffect(() => {
@@ -28,6 +29,21 @@ export default function MultiPlayer() {
     };
 
     fetchLeaderboard();
+  }, []);
+
+  // live "N in queue": subscribe while on this page (needs a login; logged-out
+  // visitors simply never get a count).
+  useEffect(() => {
+    const socket = getSocket();
+    const unsubscribe = [
+      socket.whenOpen(() => socket.send({ type: 'watch_queue' })),
+      socket.on('queue_count', ({ count }) => setQueueCount(count)),
+    ];
+
+    return () => {
+      unsubscribe.forEach((off) => off());
+      socket.send({ type: 'unwatch_queue' });
+    };
   }, []);
 
   // matchmaking: sit in the server's queue while isMatchmaking is true. The
@@ -125,6 +141,9 @@ export default function MultiPlayer() {
               disabled={isMatchmaking}
             >
               {isMatchmaking ? 'Finding Match...' : 'Vs. random'}
+              {queueCount !== null && (
+                <span className="block text-sm">{queueCount} in queue</span>
+              )}
             </button>
             {isMatchmaking && (
               <div className="mt-4 text-center">

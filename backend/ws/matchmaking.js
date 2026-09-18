@@ -13,6 +13,19 @@ const STEP_MS = 10_000; // ...every this often
 const TICK_MS = 1000;
 
 const queue = new Map(); // userId -> { session, elo, since }
+let onChange = null; // (size) => void, set by the ws server to push live counts
+
+function notify() {
+  onChange?.(queue.size);
+}
+
+function size() {
+  return queue.size;
+}
+
+function watch(fn) {
+  onChange = fn;
+}
 
 async function join(session) {
   session.wantsQueue = true;
@@ -20,13 +33,17 @@ async function join(session) {
   // The player may have left (or disconnected) while we were loading.
   if (!session.wantsQueue || !user) return;
   queue.set(session.userId, { session, elo: user.elo, since: Date.now() });
+  notify();
   tryMatch();
 }
 
 function leave(session) {
   session.wantsQueue = false;
   const entry = queue.get(session.userId);
-  if (entry && entry.session === session) queue.delete(session.userId);
+  if (entry && entry.session === session) {
+    queue.delete(session.userId);
+    notify();
+  }
 }
 
 function pair(a, b) {
@@ -34,6 +51,7 @@ function pair(a, b) {
   queue.delete(b.session.userId);
   a.session.wantsQueue = false;
   b.session.wantsQueue = false;
+  notify();
   const room = rooms.createMatchedRoom(a.session.userId, b.session.userId);
   const msg = JSON.stringify({ type: 'match_found', matchId: room.id });
   send(a.session, msg);
@@ -63,4 +81,4 @@ function tryMatch() {
 
 setInterval(tryMatch, TICK_MS).unref();
 
-module.exports = { join, leave };
+module.exports = { join, leave, size, watch };

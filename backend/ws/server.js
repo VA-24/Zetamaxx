@@ -9,8 +9,10 @@
 //   join        { matchId }          -> waiting | match_start | match_end | full
 //   leave       {}
 //   answer      { index, value }     -> (opponent receives) score
-//   queue_join  {}                   -> match_found { matchId }
-//   queue_leave {}
+//   queue_join    {}                 -> match_found { matchId }
+//   queue_leave   {}
+//   watch_queue   {}                 -> queue_count { count }, then pushed on every change
+//   unwatch_queue {}
 //
 // Server -> client (room events)
 //   match_start { problems, remainingMs, you, opponent }   also sent as the state snapshot on rejoin
@@ -68,14 +70,29 @@ function handle(session, msg) {
     case 'queue_leave':
       matchmaking.leave(session);
       break;
+    case 'watch_queue':
+      session.watchQueue = true;
+      reply(session, msg, { type: 'queue_count', count: matchmaking.size() });
+      break;
+    case 'unwatch_queue':
+      session.watchQueue = false;
+      break;
   }
 }
 
 function attach(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 8192 });
 
+  // Live queue size for lobbies that asked for it.
+  matchmaking.watch((count) => {
+    const msg = JSON.stringify({ type: 'queue_count', count });
+    for (const ws of wss.clients) {
+      if (ws.session?.watchQueue) send(ws.session, msg);
+    }
+  });
+
   wss.on('connection', (ws) => {
-    const session = { ws, userId: null, room: null, wantsQueue: false, alive: true };
+    const session = { ws, userId: null, room: null, wantsQueue: false, watchQueue: false, alive: true };
     ws.session = session;
 
     ws.on('pong', () => { session.alive = true; });
