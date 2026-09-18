@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
 import { Analytics } from "@vercel/analytics/react"
 import Link from 'next/link';
+import { getSocket } from '../../lib/socket';
 
 export default function MultiPlayer() {
   const router = useRouter();
@@ -29,76 +29,31 @@ export default function MultiPlayer() {
     fetchLeaderboard();
   }, []);
 
-  // matchmaking polling
+  // matchmaking: sit in the server's queue while isMatchmaking is true. The
+  // server pushes match_found; leaving the page or cancelling dequeues us.
   useEffect(() => {
-    let pollInterval;
-    if (isMatchmaking) {
-      pollInterval = setInterval(async () => {
-        try {
-          const response = await fetch('/api/matchmaking/search', {
-            headers: {
-              'x-auth-token': localStorage.getItem('token')
-            }
-          });
-          const data = await response.json();
-          
-          if (data.found) {
-            setIsMatchmaking(false);
-            router.push(`/multiplayer/${data.matchId}`);
-          }
-        } catch (error) {
-          console.error('Error checking matchmaking status:', error);
-        }
-      }, 2000);
-    }
+    if (!isMatchmaking) return;
+
+    const socket = getSocket();
+    const unsubscribe = [
+      socket.whenOpen(() => socket.send({ type: 'queue_join' })),
+      socket.on('match_found', ({ matchId }) => {
+        setIsMatchmaking(false);
+        router.push(`/multiplayer/${matchId}`);
+      }),
+      socket.on('auth_error', () => setIsMatchmaking(false)),
+    ];
 
     return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
+      unsubscribe.forEach((off) => off());
+      socket.send({ type: 'queue_leave' });
     };
   }, [isMatchmaking, router]);
 
-  // cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (isMatchmaking) {
-        fetch('/api/matchmaking/cancel', {
-          method: 'POST',
-          headers: {
-            'x-auth-token': localStorage.getItem('token')
-          }
-        }).catch(console.error);
-      }
-    };
-  }, [isMatchmaking]);
-
   const generateLink = async () => {
-    const gameId = uuidv4();
     try {
-      const response = await fetch('/api/matches/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({
-          matchId: gameId,
-          duration: 120,
-          status: 'waiting',
-          type: 'vsFriend',
-          seed: Math.floor(Math.random() * 1000000),
-          challenger: null,
-          challenged: null
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'You must log in before accessing multiplayer and the profile page');
-      }
-      
-      const link = `${window.location.origin}/multiplayer/${gameId}`;
+      const { matchId } = await getSocket().request({ type: 'create_room' });
+      const link = `${window.location.origin}/multiplayer/${matchId}`;
       setGeneratedLink(link);
     } catch (error) {
       console.error('Error creating match:', error);
@@ -106,23 +61,8 @@ export default function MultiPlayer() {
     }
   };
 
-  const findRandomMatch = async () => {
-    try {
-      setIsMatchmaking(true);
-      const response = await fetch('/api/matchmaking/initiate', {
-        method: 'POST',
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start matchmaking');
-      }
-    } catch (error) {
-      console.error('Error starting matchmaking:', error);
-      setIsMatchmaking(false);
-    }
+  const findRandomMatch = () => {
+    setIsMatchmaking(true);
   };
 
   return (
@@ -176,15 +116,7 @@ export default function MultiPlayer() {
               <div className="mt-4 text-center">
                 <p>Matchmaking in progress...</p>
                 <button 
-                  onClick={() => {
-                    setIsMatchmaking(false);
-                    fetch('/api/matchmaking/cancel', {
-                      method: 'POST',
-                      headers: {
-                        'x-auth-token': localStorage.getItem('token')
-                      }
-                    }).catch(console.error);
-                  }}
+                  onClick={() => setIsMatchmaking(false)}
                   className="text-red-500 underline mt-2"
                 >
                   Cancel

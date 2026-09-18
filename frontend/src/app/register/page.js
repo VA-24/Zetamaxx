@@ -7,7 +7,6 @@ export default function Register() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -25,11 +24,8 @@ export default function Register() {
 
     const requestBody = {
         username: formData.username,
-        email: formData.email,
         password: formData.password
     }
-
-    console.log(requestBody);
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -74,21 +70,6 @@ export default function Register() {
               id="username"
               name="username"
               value={formData.username}
-              onChange={handleChange}
-              className="w-full p-2 border"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
               onChange={handleChange}
               className="w-full p-2 border"
               required

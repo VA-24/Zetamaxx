@@ -1,81 +1,42 @@
 const express = require('express');
-const router = express.Router();
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { sign } = require('../lib/token');
+
+const router = express.Router();
+
+function loginResponse(user) {
+  return { token: sign(user._id), userId: user._id, message: 'Login successful' };
+}
 
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: 'username and password are required' });
+    }
 
-    let user = await User.findOne({ $or: [{ email }, { username }] });
-    if (user) {
+    if (await User.exists({ username })) {
       return res.status(400).json({ message: 'user already exists' });
     }
 
-    user = new User({
-      username,
-      email,
-      password
-    });
-
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    await user.save();
-    
-
-    const payload = {
-      user: {
-        id: user.id
-      }
-    };
-
-
-    const token = jwt.sign(
-      { user: { id: user._id } },
-      process.env.JWT_SECRET,
-      { expiresIn: '168h' }
-    );
-
-    res.json({
-      token,
-      userId: user._id,
-      message: 'Login successful'
-    });
+    const user = await User.create({ username, password: await bcrypt.hash(password, 10) });
+    res.json(loginResponse(user));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
   }
 });
 
-
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    const user = await User.findOne({ username });
-    if (!user) {
+    const user = await User.findOne({ username }, 'password').lean();
+    if (!user || !(await bcrypt.compare(password ?? '', user.password))) {
       return res.status(400).json({ message: 'invalid credentials' });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { user: { id: user._id } },
-      process.env.JWT_SECRET,
-      { expiresIn: '168h' }
-    );
-
-    res.json({
-      token,
-      userId: user._id,
-      message: 'Login successful'
-    });
+    res.json(loginResponse(user));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -84,17 +45,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/leaderboard', async (req, res) => {
   try {
-    const users = await User.getLeaderboard();
-    
-    const formattedLeaderboard = users.map(user => ({
-      _id: user._id,
-      username: user.username,
-      elo: user.elo,
-      multiplayerGamesPlayed: user.multiplayerResults.length,
-      averageScore: user.averageScore
-    }));
-
-    res.json(formattedLeaderboard);
+    res.json(await User.leaderboard());
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -103,30 +54,22 @@ router.get('/leaderboard', async (req, res) => {
 
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .select('-password')
-      .select({
-        username: 1,
-        elo: 1,
-        averageScore: 1,
-        gamesPlayed: 1,
-        singleplayerResults: 1,
-        multiplayerResults: 1
-      });
-
+    const user = await User.findById(
+      req.user.id,
+      'username elo averageScore singleplayerResults multiplayerResults',
+    ).lean();
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.singleplayerResults.sort((a, b) => b.timestamp - a.timestamp);
-    user.multiplayerResults.sort((a, b) => b.timestamp - a.timestamp);
-
+    const newestFirst = (a, b) => b.timestamp - a.timestamp;
+    user.singleplayerResults = (user.singleplayerResults ?? []).sort(newestFirst);
+    user.multiplayerResults = (user.multiplayerResults ?? []).sort(newestFirst);
     res.json(user);
   } catch (err) {
     console.error('Profile fetch error:', err);
     res.status(500).send('Server error');
   }
 });
-
 
 module.exports = router;

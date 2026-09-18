@@ -1,57 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import { getSocket } from '../../../lib/socket';
 
-function seededRandom(seed) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-function generateProblem(seed) {
-  const operators = ['+', '–', '×', '÷'];
-  const operator = operators[Math.floor(seededRandom(seed) * operators.length)];
-  let firstNumber, secondNumber, correctAnswer;
-
-  switch(operator) {
-    case '+':
-      firstNumber = Math.floor(seededRandom(seed + 1) * 99) + 2;
-      secondNumber = Math.floor(seededRandom(seed + 2) * 99) + 2;
-      if (secondNumber > firstNumber) {
-        [firstNumber, secondNumber] = [secondNumber, firstNumber];
-      }
-      correctAnswer = firstNumber + secondNumber;
-      break;
-    case '–':
-      firstNumber = Math.floor(seededRandom(seed + 1) * 199) + 2;
-      secondNumber = Math.floor(seededRandom(seed + 2) * (firstNumber - 1)) + 1;
-      correctAnswer = firstNumber - secondNumber;
-      break;
-    case '×':
-      firstNumber = Math.floor(seededRandom(seed + 1) * 11) + 2;
-      secondNumber = Math.floor(seededRandom(seed + 2) * 99) + 2;
-      if (secondNumber > firstNumber) {
-        [firstNumber, secondNumber] = [secondNumber, firstNumber];
-      }
-      correctAnswer = firstNumber * secondNumber;
-      break;
-    case '÷':
-      secondNumber = Math.floor(seededRandom(seed + 1) * 11) + 2;
-      correctAnswer = Math.floor(seededRandom(seed + 2) * 84) + 2;
-      firstNumber = correctAnswer * secondNumber;
-      break;
-  }
-
-  return {
-    firstNumber,
-    secondNumber,
-    operator,
-    correctAnswer
-  };
-}
-  
-
-export default function Game({ params }) {
+export default function Game() {
   const router = useRouter();
+  const { gameId } = useParams();
   const [problems, setProblems] = useState([]);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -59,173 +13,62 @@ export default function Game({ params }) {
   const [opponentScore, setOpponentScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(null);
   const [gameStatus, setGameStatus] = useState('waiting');
-  const [matchData, setMatchData] = useState(null);
-  const [gameResult, setGameResult] = useState(null);
-  const endGameRef = useRef(false);
   const [isMatchEnded, setIsMatchEnded] = useState(false);
   const [isGameFull, setIsGameFull] = useState(false);
+  // Server-issued deadline, in local clock terms.
+  const endsAtRef = useRef(null);
 
-  //joinmatch
+  // Room membership: take (or retake, after a reconnect) our seat while
+  // mounted, and give it up when leaving the page. The server pushes every
+  // state change; nothing is polled.
   useEffect(() => {
-    const joinMatch = async () => {
-      try {
-        const response = await fetch(`/api/matches/${params.gameId}/join`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': localStorage.getItem('token')
-          }
-        });
+    const socket = getSocket();
+    const unsubscribe = [
+      socket.whenOpen(() => socket.send({ type: 'join', matchId: gameId })),
+      socket.on('full', () => setIsGameFull(true)),
+      // Sent when the match starts and as a snapshot on rejoin.
+      socket.on('match_start', (msg) => {
+        endsAtRef.current = Date.now() + msg.remainingMs;
+        setProblems(msg.problems);
+        setScore(msg.you);
+        setCurrentProblemIndex(msg.you);
+        setOpponentScore(msg.opponent);
+        setIsMatchEnded(false);
+        setGameStatus('playing');
+      }),
+      socket.on('score', (msg) => setOpponentScore(msg.opponent)),
+      socket.on('match_end', (msg) => {
+        setScore(msg.you);
+        setOpponentScore(msg.opponent);
+        setIsMatchEnded(true);
+        setGameStatus('completed');
+      }),
+    ];
 
-        if (response.status === 409) {
-          setIsGameFull(true);
-          return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to join match');
-        }
-      } catch (error) {
-        console.error('Error joining match:', error);
-      }
+    return () => {
+      unsubscribe.forEach((off) => off());
+      socket.send({ type: 'leave' });
     };
-    joinMatch();
-  }, [params.gameId]);
-
-  //start match
-  useEffect(() => {
-    if (gameStatus === 'playing') return;
-
-    const checkMatchStatus = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/matches/${params.gameId}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': localStorage.getItem('token')
-          }
-        });
-        const match = await response.json();
-        
-        if (match.challenger && match.challenged) {
-          setMatchData(match);
-          setGameStatus('playing');
-          console.log('opponent joined - match started')
-          
-          const initialProblems = Array(200).fill(null).map((_, i) => 
-            generateProblem(match.seed + i)
-          );
-          setProblems(initialProblems);
-        }
-      } catch (error) {
-        console.error('Error checking match status:', error);
-      }
-    }, 1000);
-
-    return () => clearInterval(checkMatchStatus);
-  }, [gameStatus, params.gameId]);
-
-  //set opponent score
-  useEffect(() => {
-    if (gameStatus !== 'playing') return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/matches/${params.gameId}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': localStorage.getItem('token')
-          }
-        });
-        const match = await response.json();
-        
-        const currentUserId = localStorage.getItem('userId');
-        const isChallenger = match.challenger === currentUserId;
-        
-        setOpponentScore(isChallenger ? match.challengedScore : match.challengerScore);
-        
-        if (match.status === 'completed') {
-          setIsMatchEnded(true);
-          const playerScore = isChallenger ? match.challengerScore : match.challengedScore;
-          const opponentFinalScore = isChallenger ? match.challengedScore : match.challengerScore;
-          
-          setGameResult({
-            won: playerScore > opponentFinalScore,
-            isDraw: playerScore === opponentFinalScore,
-            playerScore,
-            opponentFinalScore
-          });
-        }
-      } catch (error) {
-        console.error('Error polling match:', error);
-      }
-    }, 1000);
-
-    return () => clearInterval(pollInterval);
-  }, [gameStatus, params.gameId, matchData, isMatchEnded]);
+  }, [gameId]);
 
   //timer
   useEffect(() => {
-    if (gameStatus !== 'playing' || !matchData?.startTime || isMatchEnded) return;
+    if (gameStatus !== 'playing' || isMatchEnded) return;
 
-    const calculateTimeLeft = () => {
-      const startTime = new Date(matchData.startTime).getTime();
-      const now = Date.now();
-      const elapsed = Math.floor((now - startTime) / 1000);
-      const remaining = Math.max(120 - elapsed, 0);
-      
-      if (remaining === 0 && !endGameRef.current) {
-        endGameRef.current = true;
-        endGame();
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((endsAtRef.current - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        // Stop taking input now; the server's match_end carries final scores.
+        setGameStatus('completed');
         setIsMatchEnded(true);
       }
-      
-      return remaining;
     };
 
-    const timer = setInterval(() => {
-      const remaining = calculateTimeLeft();
-      setTimeLeft(remaining);
-    }, 100);
-
-    setTimeLeft(calculateTimeLeft());
-
+    tick();
+    const timer = setInterval(tick, 100);
     return () => clearInterval(timer);
-  }, [gameStatus, matchData?.startTime, isMatchEnded]);
-
-  //complete game
-  const endGame = async () => {
-    if (gameStatus !== 'playing' || isMatchEnded) return;
-    setGameStatus('completed');
-    setIsMatchEnded(true);
-
-    try {
-      const response = await fetch(`/api/matches/${params.gameId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to complete match');
-      }
-
-      const match = await response.json();
-      const isChallenger = match.challenger === matchData?.challenger;
-      const playerScore = isChallenger ? match.challengerScore : match.challengedScore;
-      const opponentFinalScore = isChallenger ? match.challengedScore : match.challengerScore;
-
-      setGameResult({
-        won: playerScore > opponentFinalScore,
-        isDraw: playerScore === opponentFinalScore,
-        playerScore,
-        opponentFinalScore
-      });
-    } catch (error) {
-      console.error('Error completing match:', error);
-    }
-  };
+  }, [gameStatus, isMatchEnded]);
 
   //answer logic
   const handleAnswerChange = (e) => {
@@ -235,19 +78,12 @@ export default function Game({ params }) {
     if (gameStatus !== 'playing') return;
 
     const currentProblem = problems[currentProblemIndex];
-    if (parseInt(newAnswer) === currentProblem.correctAnswer) {
+    if (currentProblem && parseInt(newAnswer) === currentProblem.correctAnswer) {
       setScore(prev => prev + 1);
       setCurrentProblemIndex(prev => prev + 1);
       setAnswer('');
 
-      fetch(`/api/matches/${params.gameId}/score`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({ score: score + 1 })
-      }).catch(error => console.error('Error updating score:', error));
+      getSocket().send({ type: 'answer', index: currentProblemIndex, value: currentProblem.correctAnswer });
     }
   };
 

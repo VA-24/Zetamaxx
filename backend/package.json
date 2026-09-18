@@ -1,13 +1,15 @@
 {
   "name": "backend",
-  "version": "1.0.0",
-  "description": "Express.js backend server",
+  "version": "2.0.0",
+  "description": "Zetamaxx server: REST for auth/profile, WebSockets for matches",
   "main": "index.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "migrate": "node scripts/migration.js"
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,9 +17,8 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.11.0",
     "mongoose": "^8.8.3",
-    "uuid": "^11.0.3"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

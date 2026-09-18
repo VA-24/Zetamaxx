@@ -7,27 +7,9 @@ export default function SinglePlayer() {
   const router = useRouter();
   const [duration, setDuration] = useState(120);
 
-  const startGame = async () => {
-    const gameId = uuidv4();
-    try {
-      const response = await fetch('/api/matches/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({
-          duration: duration,
-          type: 'single'
-        })
-      });
-
-      if (response.ok) {
-        router.push(`/singleplayer/${gameId}`);
-      }
-    } catch (error) {
-      console.error('Error starting game:', error);
-    }
+  // Singleplayer runs entirely in the browser; the result is posted when it ends.
+  const startGame = () => {
+    router.push(`/singleplayer/${uuidv4()}`);
   };
 
   return (
