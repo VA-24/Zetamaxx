@@ -5,7 +5,8 @@
 // "join room X" keeps its seat through a dropped connection. Fire-and-forget
 // messages use `send`; the few call/response ones use `request`.
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/ws';
+// Production by default; .env.local points this at a local backend.
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://zetamaxx-server.onrender.com/ws';
 const CLOSE_UNAUTHORIZED = 4001;
 const REQUEST_TIMEOUT_MS = 10_000;
 const RETRY_MIN_MS = 1000;

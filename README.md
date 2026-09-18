@@ -42,7 +42,7 @@ cp .env.example .env         # set MONGODB_URI, JWT_SECRET
 npm install && npm run dev   # http://localhost:3001
 
 cd ../frontend
-cp .env.example .env.local   # defaults point at localhost:3001
+cp .env.example .env.local   # points the frontend at the local backend (otherwise: production)
 npm install && npm run dev   # http://localhost:3000
 ```
 
@@ -89,22 +89,23 @@ quiet spell takes ~30–60s while it wakes. Any paid plan avoids that.
 
 ### Frontend → Vercel
 
-Set two environment variables on the Vercel project (Settings → Environment
-Variables), then redeploy:
+No configuration needed: the production backend URLs are the in-code defaults
+(`next.config.mjs` for the `/api` rewrite, `src/lib/socket.js` for the
+WebSocket). `BACKEND_URL` / `NEXT_PUBLIC_WS_URL` exist only as overrides.
 
-| Variable             | Value                                        |
-| -------------------- | -------------------------------------------- |
-| `BACKEND_URL`        | `https://zetamaxx-server.onrender.com`       |
-| `NEXT_PUBLIC_WS_URL` | `wss://zetamaxx-server.onrender.com/ws`      |
-
-`BACKEND_URL` is read at build time by `next.config.mjs` for the `/api` rewrite;
-`NEXT_PUBLIC_WS_URL` is baked into the client bundle.
+The frontend Vercel project is not linked to GitHub, so deploy it manually
+(`vercel --prod` from `frontend/`, or connect the repo in the Vercel dashboard
+with Root Directory `frontend`).
 
 ### Cutover order
 
 1. ~~Deploy the backend on Render~~ — done; `https://zetamaxx-server.onrender.com/api` returns `{"message":"serve online"}`.
-2. Set the two Vercel variables and redeploy the frontend.
-3. Delete the old `zetamaxx-server` Vercel project.
+2. Redeploy the frontend.
+3. Delete the old `zetamaxx-server` Vercel project. Until step 2 happens it
+   must stay: it auto-deploys from `master` and `backend/vercel.json` turns it
+   into a proxy that forwards `/api/*` to Render, which is what keeps the
+   currently deployed frontend's login/profile/leaderboard/singleplayer
+   working. (Its multiplayer needs the new frontend.)
 
 Because `JWT_SECRET` was rotated, everyone logs in again once the frontend
 switches over (tokens were 7-day anyway). The Atlas password is also in git
