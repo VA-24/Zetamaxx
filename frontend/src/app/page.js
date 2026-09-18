@@ -4,16 +4,16 @@ import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useState, useEffect } from 'react';
 import { Analytics } from "@vercel/analytics/react"
+import { getSession } from '../lib/session';
 
 export default function Home() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  // undefined until localStorage has been read (after hydration), then
+  // null when logged out or { username } when logged in.
+  const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
-    }
+    setSession(getSession());
   }, []);
 
   const startSinglePlayer = () => {
@@ -21,11 +21,17 @@ export default function Home() {
     router.push(`/singleplayer/${gameId}`);
   };
 
+  const heading = session === undefined
+    ? '\u00a0'
+    : session === null
+      ? 'Log in to get started'
+      : `Welcome to zetamaxx${session.username ? `, ${session.username}` : ''}`;
+
   return (
     <main className="min-h-screen bg-white">
       <div className="bg-gray-200 p-8 w-full max-w-md mx-auto">
         <h1 className="text-3xl font-bold mb-8">
-          Welcome to zetamaxx{username ? `, ${username}` : ''}
+          {heading}
         </h1>
         
         <div className="flex flex-row space-x-4">
@@ -54,7 +60,6 @@ export default function Home() {
             Profile
           </button>
         </div>
-        <h1 className='text text-sm mt-8'>Please sign in/register before you get started. Note that you will be logged out from inactivity after a week.</h1>
       </div>
       <Analytics />
     </main>
