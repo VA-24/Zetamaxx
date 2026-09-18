@@ -56,24 +56,36 @@ frontend stays on Vercel.
 
 ### Backend → Render
 
-`render.yaml` at the repo root is a Render Blueprint. In the Render dashboard:
-**New → Blueprint → pick this repo**, then supply the two prompted secrets:
+Live at **https://zetamaxx-server.onrender.com** (service `zetamaxx-server`,
+Oregon, free plan; [dashboard](https://dashboard.render.com/web/srv-damd81ou01pc739qiutg)).
+Build `cd backend && npm ci`, start `cd backend && npm start`. Environment:
 
 - `MONGODB_URI` – the existing Atlas connection string. Same URI = same data
-  (the current database is named `test`, the driver default when the URI has no
-  path). Existing users, ratings and results carry over unchanged.
-- `JWT_SECRET` – `node backend/jwt_token_generation.js` prints a fresh one
+  (the database is named `test`, the driver default when the URI has no path).
+  Existing users, ratings and results carried over unchanged.
+- `JWT_SECRET` – rotated at deploy time (the old one was committed to git).
+  `node backend/jwt_token_generation.js` prints a new one if it ever needs
+  rotating again.
+- `NODE_VERSION` – `22.12.0`
 
-On boot the server syncs indexes with the schemas; the first deploy logs
+`render.yaml` mirrors this configuration (as a Blueprint) if the service ever
+needs to be recreated.
+
+**Auto-deploy:** Render isn't connected to the GitHub account yet, so pushes
+don't trigger builds. Either connect it (Render dashboard → Account Settings →
+Git Providers → GitHub, grant access to `VA-24/Zetamaxx`) or trigger deploys
+manually from the dashboard / API.
+
+On boot the server syncs indexes with the schemas; the first deploy logged
 `dropped stale User indexes: email_1` because accounts no longer use email. No
-data is removed — old documents simply keep an ignored `email` field.
+data was removed — old documents simply keep an ignored `email` field.
 
-The service listens on Render's `PORT`, health-checks `/api`, and on deploy
-`SIGTERM` finishes any live matches (results are saved) before the old
-instance exits; clients reconnect to the new one.
+The service listens on Render's `PORT`, answers health checks on `/` and
+`/api`, and on deploy `SIGTERM` finishes any live matches (results are saved)
+before the old instance exits; clients reconnect to the new one.
 
-Note the free plan sleeps after 15 minutes idle, so the first connection after
-a quiet spell takes ~30–60s while it wakes. Any paid plan avoids that.
+The free plan sleeps after 15 minutes idle, so the first connection after a
+quiet spell takes ~30–60s while it wakes. Any paid plan avoids that.
 
 ### Frontend → Vercel
 
@@ -90,10 +102,11 @@ Variables), then redeploy:
 
 ### Cutover order
 
-1. Deploy the backend on Render and confirm `https://<host>/api` returns `{"message":"serve online"}`.
+1. ~~Deploy the backend on Render~~ — done; `https://zetamaxx-server.onrender.com/api` returns `{"message":"serve online"}`.
 2. Set the two Vercel variables and redeploy the frontend.
 3. Delete the old `zetamaxx-server` Vercel project.
 
-Existing JWTs stay valid across the cutover as long as `JWT_SECRET` is
-unchanged. The previous secret and database password were committed to git
-history, so rotate both (users just log in again).
+Because `JWT_SECRET` was rotated, everyone logs in again once the frontend
+switches over (tokens were 7-day anyway). The Atlas password is also in git
+history and this repo is public: rotate it in Atlas → Database Access, then
+update `MONGODB_URI` on the Render service.
