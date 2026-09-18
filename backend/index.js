@@ -16,7 +16,7 @@ app.use(logger);
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/matches', require('./routes/matches'));
-app.get('/api', (req, res) => res.json({ message: 'serve online' }));
+app.get(['/', '/api'], (req, res) => res.json({ message: 'serve online' }));
 
 const server = http.createServer(app);
 const wss = attach(server);
