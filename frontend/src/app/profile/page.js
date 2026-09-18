@@ -1,22 +1,34 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getSession } from '../../lib/session';
 
 export default function Profile() {
-  const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loggedOut, setLoggedOut] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
+      if (!getSession()) {
+        setLoggedOut(true);
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch('/api/auth/profile', {
           headers: {
             'x-auth-token': localStorage.getItem('token')
           }
         });
-        
+
+        if (response.status === 401) {
+          setLoggedOut(true);
+          return;
+        }
+
         if (!response.ok) {
           throw new Error('Failed to fetch user data');
         }
@@ -25,13 +37,14 @@ export default function Profile() {
         setUserData(data);
       } catch (error) {
         console.error('Error fetching user data:', error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserData();
-  }, [router]);
+  }, []);
 
   if (loading) {
     return <div className="text-center mt-8">Loading...</div>;
@@ -42,17 +55,24 @@ export default function Profile() {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
+  const heading = loggedOut
+    ? 'Log in to see stats'
+    : loadError
+      ? 'Unable to load stats'
+      : `${userData.username}'s Profile`;
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2 text-center">
-          {userData?.username}&apos;s Profile
+          {heading}
         </h1>
         <p className="text-sm mb-8 text-center">
           <Link href="/">Home</Link>
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2">
+        {userData && (
+          <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Singleplayer Section */}
           <div className="bg-gray-200 p-6 rounded-lg shadow">
             <div className="mb-4 text-center">
@@ -115,7 +135,8 @@ export default function Profile() {
               ))}
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
