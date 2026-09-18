@@ -60,6 +60,9 @@ export default function Home() {
             Profile
           </button>
         </div>
+        <p className="text-sm mt-8">
+          Inspired by <a href="https://zetamac.com">zetamac.com</a>
+        </p>
       </div>
       <Analytics />
     </main>
